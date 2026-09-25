@@ -8,7 +8,7 @@ from openai import OpenAI
 from .config import Config
 from .tools import registry
 from .security import PermissionManager, PermissionMode
-from .core import shared_state
+from .core import shared_state, robust_json_parse, normalize_parameters
 from .ui import (
     console,
     print_assistant_message,
@@ -137,13 +137,21 @@ class Agent:
                     func_name = tool_call.function.name
                     call_id = tool_call.id
 
-                    # 解析工具参数
-                    try:
-                        args = json.loads(tool_call.function.arguments)
-                    except Exception as e:
-                        args = {}
-                        print_error(f"解析工具参数失败: {str(e)}")
+                    # 鲁棒参数解析与自愈反馈机制
+                    raw_args = tool_call.function.arguments or ""
+                    parse_ok, args, parse_err = robust_json_parse(raw_args)
 
+                    if not parse_ok:
+                        print_error(f"工具 [{func_name}] 参数格式解析失败: {parse_err}")
+                        self.messages.append({
+                            "role": "tool",
+                            "tool_call_id": call_id,
+                            "content": f"参数格式错误: {parse_err}。请仔细核对引号与转义，重新以正确的合法 JSON 输出该工具的参数。"
+                        })
+                        continue
+
+                    # 参数别名归一化（如自动对齐 file_path -> path）
+                    args = normalize_parameters(func_name, args)
                     print_tool_call(func_name, args)
 
                     # 权限拦截判断
