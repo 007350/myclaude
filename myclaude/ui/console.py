@@ -23,17 +23,28 @@ if hasattr(sys.stderr, "reconfigure"):
 console = Console(legacy_windows=False)
 
 
-def print_welcome(model_name: str, cwd: str, mcp_count: int = 0, sidecar_port: int = 0):
+def print_welcome(
+    model_name: str,
+    cwd: str,
+    mcp_count: int = 0,
+    sidecar_port: int = 0,
+    claude_md_found: bool = False,
+    skill_count: int = 0,
+):
     text = Text()
     text.append("🤖 MyClaude Agent CLI\n", style="bold cyan")
     text.append(f"• 模型: {model_name}\n", style="green")
     text.append(f"• 工作区: {cwd}\n", style="yellow")
+    if claude_md_found:
+        text.append("• 规则规范: 已成功装载 CLAUDE.md 长期记忆\n", style="bold green")
+    if skill_count > 0:
+        text.append(f"• 扩展技能: 已发现 {skill_count} 个按需领域技能 (输入 /skills 查看)\n", style="bold cyan")
     if mcp_count > 0:
         text.append(f"• MCP 插件: 已挂载 ({mcp_count} 个外部工具)\n", style="bold magenta")
     if sidecar_port > 0:
         text.append(f"• 伴生窗口: 监听端口 {sidecar_port}（可在侧边终端运行 python sidecar.py 连通）\n", style="bold blue")
     text.append("• 输入具体任务，Agent 会自主思考、读取与编写代码、执行命令\n", style="dim")
-    text.append("• 常用命令: /yolo (极速放行), /mcp (查看插件), /clear (清空上下文), /exit (退出)", style="dim italic")
+    text.append("• 常用命令: /init (初始化规范), /skills (技能库), /yolo (极速放行), /compact (压缩), /mcp (插件)", style="dim italic")
 
     console.print(Panel(text, title="[bold magenta]Claude Code Python 本地版[/bold magenta]", border_style="cyan"))
 
@@ -170,3 +181,37 @@ def print_compaction_card(stats: Dict[str, Any]):
         desc.append("[dim]已自动浓缩前期已完成事项与修改记录，核心执行状态无损保留。[/dim]")
 
     console.print(Panel("\n".join(desc), title=f"[bold {style}]{title}[/bold {style}]", border_style=style))
+
+
+def print_skills_table(skills: List[Any]):
+    """以表格形式展示已发现的扩展技能库"""
+    if not skills:
+        console.print("[dim]当前未发现任何扩展技能 (Skills)。可在项目根目录或 ~/.myclaude/skills 创建技能文件夹。[/dim]")
+        return
+
+    from rich.table import Table
+    table = Table(title="🤹 已发现的领域扩展技能 (Skills)", border_style="cyan")
+    table.add_column("技能名 (Name)", style="bold cyan", justify="left")
+    table.add_column("作用域", style="yellow", justify="center")
+    table.add_column("触发关键词 (Triggers)", style="magenta", justify="left")
+    table.add_column("脚本数", style="green", justify="center")
+    table.add_column("技能职责与描述", style="white", justify="left")
+
+    for s in skills:
+        scope = "全局 [~/.myclaude]" if getattr(s, "is_global", False) else "项目 [./skills]"
+        trig = ", ".join(getattr(s, "triggers", [])) or "-"
+        scripts_count = str(len(getattr(s, "scripts", [])))
+        table.add_row(
+            getattr(s, "name", "unknown"),
+            scope,
+            trig,
+            scripts_count,
+            getattr(s, "description", "")
+        )
+
+    console.print(table)
+
+
+def print_skill_activation(skill_name: str, detail: str):
+    """展示技能激活详情面板"""
+    console.print(Panel(Markdown(detail), title=f"[bold magenta]⚡ 技能已激活: {skill_name}[/bold magenta]", border_style="magenta"))

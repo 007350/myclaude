@@ -7,8 +7,14 @@ from openai import OpenAI
 
 from .config import Config
 from .tools import registry
-from .security import PermissionManager, PermissionMode
-from .core import shared_state, robust_json_parse, normalize_parameters, ContextManager
+from .core import (
+    shared_state,
+    robust_json_parse,
+    normalize_parameters,
+    ContextManager,
+    load_claude_md,
+    default_skill_manager,
+)
 from .ui import (
     console,
     print_assistant_message,
@@ -20,6 +26,7 @@ from .ui import (
     print_info,
     print_cache_stats,
     print_compaction_card,
+    print_skill_activation,
 )
 
 
@@ -35,6 +42,8 @@ class Agent:
             timeout=config.timeout,
         )
         self.context_mgr = ContextManager()
+        self.skill_mgr = default_skill_manager
+        self.claude_md_paths: List[Path] = []
         self.messages: List[Dict[str, Any]] = []
         self.reset()
 
@@ -49,9 +58,37 @@ class Agent:
             print_info(stats.get("reason", "无需压缩或压缩未产生变化"))
         return stats
 
+    def activate_skill(self, name: str) -> bool:
+        """用户或命令显式手动激活指定技能"""
+        ok, content = self.skill_mgr.activate_skill(name)
+        if ok:
+            print_skill_activation(name, content)
+            self.messages.append({
+                "role": "user",
+                "content": f"[用户手动激活专业领域技能规范]:\n{content}\n\n请在接下来的任务推进中严格遵循上述规范与操作指引！"
+            })
+            return True
+        else:
+            print_error(content)
+            return False
+
     def _build_system_prompt(self) -> str:
         cwd = os.getcwd()
         os_name = platform.system()
+
+        # 加载 CLAUDE.md 规范 (项目级与全局级)
+        claude_md_content, loaded_paths = load_claude_md(Path(cwd))
+        self.claude_md_paths = loaded_paths
+
+        claude_md_section = ""
+        if claude_md_content:
+            claude_md_section = f"\n### 项目长期规范与开发指令 (CLAUDE.md):\n{claude_md_content}\n"
+
+        # 加载轻量级 Skill 目录清单 (渐进式披露)
+        skills_catalog = self.skill_mgr.get_catalog_prompt()
+        skills_section = ""
+        if skills_catalog:
+            skills_section = f"\n{skills_catalog}\n"
 
         return f"""你是一个运行在本地终端的自主编程 Agent 助手（类似于 Claude Code）。
 你有权限查看、编辑本地文件以及在用户电脑上执行命令行指令来解决用户的软件工程与开发任务。
@@ -68,10 +105,11 @@ class Agent:
 4. **简洁专业**: 保持回复简练，直奔主题。在工具调用期间不用废话，直接调用工具；在任务完成时简明汇报修改内容。
 5. **语言风格**: 默认使用用户使用的语言（中文）。
 6. **自主能力扩展 (MCP 自进化)**: 当用户需要某项你原生不具备的能力（如查询网络特定数据、调用特殊第三方库、数据库交互等），或者明确要求你给自己添加新能力时，你可以使用 `create_python_mcp_server` 工具自主编写一段完整的 FastMCP Python 代码动态挂载为你的新工具，或者使用 `add_mcp_server` 接入外部服务。一旦添加成功，你可以在当前对话中立即调用它！
-"""
+{claude_md_section}{skills_section}"""
 
     def reset(self):
-        """重置上下文历史"""
+        """重置上下文历史并重新装载 CLAUDE.md 与 Skills"""
+        self.skill_mgr.scan_skills()
         self.messages = [
             {"role": "system", "content": self._build_system_prompt()}
         ]

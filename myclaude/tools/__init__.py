@@ -3,5 +3,6 @@ from .registry import registry, ToolRegistry
 from . import bash
 from . import file_ops
 from . import mcp_ops
+from . import skill_ops
 
-__all__ = ["registry", "ToolRegistry", "bash", "file_ops", "mcp_ops"]
+__all__ = ["registry", "ToolRegistry", "bash", "file_ops", "mcp_ops", "skill_ops"]

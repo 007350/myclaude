@@ -7,6 +7,7 @@ from rich.prompt import Prompt
 
 from .config import Config
 from .agent import Agent
+from .core import interactive_init_claude_md
 from .ui import (
     console,
     print_welcome,
@@ -14,6 +15,7 @@ from .ui import (
     print_error,
     print_mcp_servers,
     print_yolo_status,
+    print_skills_table,
 )
 
 
@@ -92,7 +94,14 @@ def main():
         sidecar_port = 0
 
     agent = Agent(config)
-    print_welcome(model_name=config.model_name, cwd=os.getcwd(), mcp_count=mcp_count, sidecar_port=sidecar_port)
+    print_welcome(
+        model_name=config.model_name,
+        cwd=os.getcwd(),
+        mcp_count=mcp_count,
+        sidecar_port=sidecar_port,
+        claude_md_found=bool(agent.claude_md_paths),
+        skill_count=len(agent.skill_mgr.list_skills()),
+    )
 
     try:
         while True:
@@ -109,7 +118,25 @@ def main():
                     break
                 elif cmd_lower in ("/clear", "/reset"):
                     agent.reset()
-                    print_info("已清空上下文历史记录。")
+                    print_info("已清空上下文历史记录并重新加载 CLAUDE.md 与 Skills。")
+                    continue
+                elif cmd_lower in ("/init", "init"):
+                    success = interactive_init_claude_md(Path.cwd(), console)
+                    if success:
+                        agent.reset()
+                        print_info("已成功装载并生效全新的 CLAUDE.md 项目规范！")
+                    continue
+                elif cmd_lower in ("/skills", "skills"):
+                    print_skills_table(agent.skill_mgr.list_skills())
+                    continue
+                elif cmd_lower.startswith("/skill"):
+                    parts = user_input.split(maxsplit=1)
+                    if len(parts) > 1 and parts[1].strip():
+                        skill_name = parts[1].strip()
+                        agent.activate_skill(skill_name)
+                    else:
+                        print_skills_table(agent.skill_mgr.list_skills())
+                        console.print("[dim]使用格式: /skill <技能名称>，例如: /skill git-workflow[/dim]")
                     continue
                 elif cmd_lower in ("/model", "/config"):
                     print_info(
@@ -131,10 +158,13 @@ def main():
                 elif cmd_lower in ("/help", "help"):
                     console.print(
                         "[bold cyan]可用命令:[/bold cyan]\n"
+                        "  /init   : 自动扫描代码库并交互式生成/微调项目 CLAUDE.md 规范\n"
+                        "  /skills : 查看所有已发现的全局与项目专业技能 (Skills)\n"
+                        "  /skill  : 显式激活某项技能（例如 /skill git-workflow）\n"
                         "  /compact: 手动触发智能上下文微摘要压缩 (保留 KV Cache 静态前缀)\n"
                         "  /yolo   : 切换 YOLO 极速放行模式 / 安全确认模式\n"
                         "  /mcp    : 查看已挂载的 MCP 外部工具与服务状态\n"
-                        "  /clear  : 清空当前多轮对话记忆\n"
+                        "  /clear  : 清空当前多轮对话记忆并重载配置\n"
                         "  /model  : 查看当前模型与 API 配置\n"
                         "  /exit   : 退出程序\n"
                         "直接输入日常开发需求，例如：\n"
