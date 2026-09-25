@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "sample-tools": {
+      "command": "python",
+      "args": [
+        "examples/sample_mcp_server.py"
+      ]
+    },
+    "system_tool": {
+      "command": "D:\\Dev\\python.exe",
+      "args": [
+        "custom_mcp_servers/system_tool_server.py"
+      ]
+    }
+  }
+}

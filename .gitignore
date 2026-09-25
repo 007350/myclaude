@@ -1,0 +1,22 @@
+# Environment variables and secrets
+.env
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Agent temp logs & history
+.myclaude/
+*.log
