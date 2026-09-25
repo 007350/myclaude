@@ -53,37 +53,33 @@ def write_file(path: str, content: str) -> str:
         return f"写入文件失败: {str(e)}"
 
 
+from .editor import apply_fuzzy_replace
+
+
 @registry.register(
     name="edit_file",
-    description="精确替换文件中的特定代码段（精准字符替换）。old_str 必须在原文件中唯一存在。替换后只修改匹配部分，保留原文件其他内容。"
+    description="高容错替换文件中的特定代码段。具备换行符归一化(CRLF/LF)、行尾空格忽略、缩进自动对齐与模糊相似度容错能力。old_str 应尽量唯一。"
 )
 def edit_file(path: str, old_str: str, new_str: str) -> str:
-    """精准字符串替换（类似 Claude Code 的核心编辑逻辑）"""
+    """高容错代码段精准替换（类似 Claude Code / Aider 的多级回退机制）"""
     p = Path(path).resolve()
     if not p.exists():
         return f"错误: 文件 '{path}' 不存在。"
+    if p.is_dir():
+        return f"错误: '{path}' 是一个目录，不能当做文件编辑。"
 
     try:
-        with open(p, "r", encoding="utf-8") as f:
+        with open(p, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
 
-        count = content.count(old_str)
-        if count == 0:
-            return (
-                f"错误: 待替换的 old_str 在文件 '{path}' 中未找到。\n"
-                f"请核对大小写、空格与换行，或者先用 read_file 查看目标代码的精准片段。"
-            )
-        elif count > 1:
-            return (
-                f"错误: 待替换的 old_str 在文件中出现了 {count} 次，无法唯一确定替换位置。\n"
-                f"请在 old_str 中包含更多上下文行（如前后几行代码），确保其在文件中是唯一的。"
-            )
+        ok, result, method = apply_fuzzy_replace(content, old_str, new_str)
+        if not ok:
+            return result  # 返回智能诊断信息与最相似的代码片段
 
-        new_content = content.replace(old_str, new_str, 1)
         with open(p, "w", encoding="utf-8") as f:
-            f.write(new_content)
+            f.write(result)
 
-        return f"成功编辑文件: {path} (已精准替换对应代码段)"
+        return f"成功编辑文件: {path} (匹配机制: {method})"
     except Exception as e:
         return f"编辑文件失败: {str(e)}"
 
