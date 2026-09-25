@@ -18,6 +18,7 @@ from .ui import (
     print_yolo_status,
     print_error,
     print_info,
+    print_cache_stats,
 )
 
 
@@ -38,15 +39,6 @@ class Agent:
     def _build_system_prompt(self) -> str:
         cwd = os.getcwd()
         os_name = platform.system()
-        files = []
-        try:
-            for item in Path(cwd).iterdir():
-                if not item.name.startswith("."):
-                    files.append(f"{item.name}{'/' if item.is_dir() else ''}")
-        except Exception:
-            pass
-
-        files_summary = ", ".join(files[:30]) if files else "(当前目录为空)"
 
         return f"""你是一个运行在本地终端的自主编程 Agent 助手（类似于 Claude Code）。
 你有权限查看、编辑本地文件以及在用户电脑上执行命令行指令来解决用户的软件工程与开发任务。
@@ -54,7 +46,7 @@ class Agent:
 ### 运行环境:
 - 操作系统: {os_name}
 - 当前工作目录: {cwd}
-- 当前目录文件: {files_summary}
+- 工作区感知: 如需查看或检索项目文件，请使用 `list_dir` 工具动态浏览，不要凭空臆测文件结构。
 
 ### 工具使用核心准则:
 1. **优先使用 edit_file 而非 write_file**: 修改已有文件时，必须使用 edit_file 进行精准字符串替换。不要全量覆盖已有文件，以避免丢失上下文或无谓浪费 Token。
@@ -107,6 +99,17 @@ class Agent:
 
                 choice = response.choices[0]
                 message = choice.message
+
+                # 统计并展示 KV Cache 缓存命中情况
+                if hasattr(response, "usage") and response.usage:
+                    u = response.usage
+                    hit = getattr(u, "prompt_cache_hit_tokens", 0) or 0
+                    total = getattr(u, "prompt_tokens", 0) or 0
+                    if not hit and hasattr(u, "prompt_tokens_details") and u.prompt_tokens_details:
+                        hit = getattr(u.prompt_tokens_details, "cached_tokens", 0) or 0
+                    if total > 0 and hit > 0:
+                        ratio = round((hit / total) * 100, 1)
+                        print_cache_stats(hit, total, ratio)
 
                 # 如果模型给出了文本回复
                 if message.content:

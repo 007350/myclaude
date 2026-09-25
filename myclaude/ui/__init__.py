@@ -10,6 +10,7 @@ from .console import (
     print_error,
     print_info,
     print_mcp_servers,
+    print_cache_stats,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "print_error",
     "print_info",
     "print_mcp_servers",
+    "print_cache_stats",
 ]

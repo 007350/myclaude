@@ -62,7 +62,8 @@ class ToolRegistry:
         self._schemas.append(schema)
 
     def get_schemas(self) -> List[Dict[str, Any]]:
-        return self._schemas
+        """严格按函数名做字典序排列，确保发给大模型的 JSON 前缀绝对一致，最大化缓存命中率"""
+        return sorted(self._schemas, key=lambda s: s["function"]["name"])
 
     def execute(self, name: str, kwargs: Dict[str, Any]) -> str:
         if name not in self._tools:

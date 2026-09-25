@@ -141,3 +141,11 @@ def print_mcp_servers(stats: Dict[str, List[str]]):
         table.add_row(s_name, str(len(tools)), ", ".join(tools))
 
     console.print(table)
+
+
+def print_cache_stats(hit_tokens: int, total_tokens: int, ratio: float):
+    """展示当前轮次的 Prompt 缓存命中情况"""
+    console.print(
+        f"[dim]⚡ [cyan]Prompt 缓存命中:[/cyan] [bold green]{ratio}%[/bold green] "
+        f"({hit_tokens}/{total_tokens} tokens 复用 KV Cache)[/dim]"
+    )
