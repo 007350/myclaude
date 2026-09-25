@@ -149,3 +149,24 @@ def print_cache_stats(hit_tokens: int, total_tokens: int, ratio: float):
         f"[dim]⚡ [cyan]Prompt 缓存命中:[/cyan] [bold green]{ratio}%[/bold green] "
         f"({hit_tokens}/{total_tokens} tokens 复用 KV Cache)[/dim]"
     )
+
+
+def print_compaction_card(stats: Dict[str, Any]):
+    """展示上下文窗口瘦身卡片"""
+    is_hard = stats.get("compressed", False)
+    title = "🗜️  上下文深度微摘要压缩已触发" if is_hard else "✂️  历史工具输出自动折叠裁剪"
+    style = "magenta" if is_hard else "yellow"
+
+    before = stats.get("before_tokens", 0)
+    after = stats.get("after_tokens", 0)
+    saved = stats.get("saved_tokens", 0)
+    ratio = stats.get("ratio", 0)
+
+    desc = [
+        f"[bold]压缩前消耗:[/bold] {before:,} tokens  ─►  [bold green]压缩后占用:[/bold green] {after:,} tokens",
+        f"[bold cyan]释放上下文空间:[/bold cyan] {saved:,} tokens ([bold green]节省 {ratio}%[/bold green])",
+    ]
+    if is_hard:
+        desc.append("[dim]已自动浓缩前期已完成事项与修改记录，核心执行状态无损保留。[/dim]")
+
+    console.print(Panel("\n".join(desc), title=f"[bold {style}]{title}[/bold {style}]", border_style=style))

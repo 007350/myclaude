@@ -8,7 +8,7 @@ from openai import OpenAI
 from .config import Config
 from .tools import registry
 from .security import PermissionManager, PermissionMode
-from .core import shared_state, robust_json_parse, normalize_parameters
+from .core import shared_state, robust_json_parse, normalize_parameters, ContextManager
 from .ui import (
     console,
     print_assistant_message,
@@ -19,6 +19,7 @@ from .ui import (
     print_error,
     print_info,
     print_cache_stats,
+    print_compaction_card,
 )
 
 
@@ -33,8 +34,20 @@ class Agent:
             base_url=config.base_url,
             timeout=config.timeout,
         )
+        self.context_mgr = ContextManager()
         self.messages: List[Dict[str, Any]] = []
         self.reset()
+
+    def manual_compact(self) -> Dict[str, Any]:
+        """手动触发深度上下文微摘要压缩"""
+        self.messages, stats = self.context_mgr.compact_history(
+            self.client, self.config.model_name, self.messages
+        )
+        if stats and stats.get("compressed"):
+            print_compaction_card(stats)
+        elif stats:
+            print_info(stats.get("reason", "无需压缩或压缩未产生变化"))
+        return stats
 
     def _build_system_prompt(self) -> str:
         cwd = os.getcwd()
@@ -83,6 +96,13 @@ class Agent:
                             "role": "user",
                             "content": f"[侧边栏用户实时战略指导]: 用户在侧边窗口指示：{s_msg}。请以此为最高优先原则，动态调整你的后续思考与工具调用！"
                         })
+
+                # 上下文拥挤度自平衡检查与梯级瘦身
+                self.messages, comp_stats = self.context_mgr.auto_balance(
+                    self.client, self.config.model_name, self.messages
+                )
+                if comp_stats:
+                    print_compaction_card(comp_stats)
 
                 # 呼叫模型
                 try:

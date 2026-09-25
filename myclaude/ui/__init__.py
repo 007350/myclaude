@@ -11,6 +11,7 @@ from .console import (
     print_info,
     print_mcp_servers,
     print_cache_stats,
+    print_compaction_card,
 )
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "print_info",
     "print_mcp_servers",
     "print_cache_stats",
+    "print_compaction_card",
 ]

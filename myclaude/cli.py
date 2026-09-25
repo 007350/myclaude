@@ -7,7 +7,14 @@ from rich.prompt import Prompt
 
 from .config import Config
 from .agent import Agent
-from .ui import console, print_welcome, print_info, print_error, print_mcp_servers
+from .ui import (
+    console,
+    print_welcome,
+    print_info,
+    print_error,
+    print_mcp_servers,
+    print_yolo_status,
+)
 
 
 def setup_interactive_config() -> Config:
@@ -115,17 +122,21 @@ def main():
                     is_yolo = agent.permission_mgr.toggle_yolo()
                     print_yolo_status(is_yolo)
                     continue
+                elif cmd_lower in ("/compact", "/compress"):
+                    agent.manual_compact()
+                    continue
                 elif cmd_lower in ("/mcp", "/plugins"):
                     print_mcp_servers(mcp_manager.get_server_stats())
                     continue
                 elif cmd_lower in ("/help", "help"):
                     console.print(
                         "[bold cyan]可用命令:[/bold cyan]\n"
-                        "  /yolo  : 切换 YOLO 极速放行模式 / 安全确认模式\n"
-                        "  /mcp   : 查看已挂载的 MCP 外部工具与服务状态\n"
-                        "  /clear : 清空当前多轮对话记忆\n"
-                        "  /model : 查看当前模型与 API 配置\n"
-                        "  /exit  : 退出程序\n"
+                        "  /compact: 手动触发智能上下文微摘要压缩 (保留 KV Cache 静态前缀)\n"
+                        "  /yolo   : 切换 YOLO 极速放行模式 / 安全确认模式\n"
+                        "  /mcp    : 查看已挂载的 MCP 外部工具与服务状态\n"
+                        "  /clear  : 清空当前多轮对话记忆\n"
+                        "  /model  : 查看当前模型与 API 配置\n"
+                        "  /exit   : 退出程序\n"
                         "直接输入日常开发需求，例如：\n"
                         "  - '帮我写一个快速排序算法并测试'\n"
                         "  - '检查当前目录下的 git 状态'\n"
