@@ -8,6 +8,7 @@ from openai import OpenAI
 from .config import Config
 from .tools import registry
 from .security import PermissionManager, PermissionMode
+from .core import shared_state
 from .ui import (
     console,
     print_assistant_message,
@@ -73,91 +74,111 @@ class Agent:
     def step(self, user_input: str):
         """执行单轮用户任务，进入自主思考与工具循环"""
         self.messages.append({"role": "user", "content": user_input})
+        shared_state.set_goal(user_input)
 
-        step_count = 0
-        while step_count < self.config.max_steps:
-            step_count += 1
+        try:
+            step_count = 0
+            while step_count < self.config.max_steps:
+                step_count += 1
+                shared_state.set_step(step_count, self.config.max_steps)
 
-            # 呼叫模型
-            try:
-                with console.status("[bold green]Agent 正在思考中...[/bold green]", spinner="dots"):
-                    response = self.client.chat.completions.create(
-                        model=self.config.model_name,
-                        messages=self.messages,
-                        tools=registry.get_schemas(),
-                        tool_choice="auto",
-                    )
-            except Exception as e:
-                print_error(f"调用模型接口失败: {str(e)}")
-                return
+                # 检查侧边伴生窗口是否有动态下发的策略纠偏/干预指令
+                steerings = shared_state.pop_all_steering()
+                if steerings:
+                    for s_msg in steerings:
+                        console.print(f"[bold magenta]📢 [已接入侧边栏实时干预]:[/bold magenta] {s_msg}")
+                        self.messages.append({
+                            "role": "user",
+                            "content": f"[侧边栏用户实时战略指导]: 用户在侧边窗口指示：{s_msg}。请以此为最高优先原则，动态调整你的后续思考与工具调用！"
+                        })
 
-            choice = response.choices[0]
-            message = choice.message
-
-            # 如果模型给出了文本回复
-            if message.content:
-                print_assistant_message(message.content)
-
-            # 将 assistant 消息存入历史记录
-            assistant_msg_dict: Dict[str, Any] = {
-                "role": "assistant",
-                "content": message.content or "",
-            }
-
-            if message.tool_calls:
-                assistant_msg_dict["tool_calls"] = [
-                    tc.model_dump() for tc in message.tool_calls
-                ]
-
-            self.messages.append(assistant_msg_dict)
-
-            # 如果模型没有调用任何工具，说明当前任务完成
-            if not message.tool_calls:
-                break
-
-            # 逐个执行工具调用
-            for tool_call in message.tool_calls:
-                func_name = tool_call.function.name
-                call_id = tool_call.id
-
-                # 解析工具参数
+                # 呼叫模型
                 try:
-                    args = json.loads(tool_call.function.arguments)
+                    with console.status("[bold green]Agent 正在思考中...[/bold green]", spinner="dots"):
+                        response = self.client.chat.completions.create(
+                            model=self.config.model_name,
+                            messages=self.messages,
+                            tools=registry.get_schemas(),
+                            tool_choice="auto",
+                        )
                 except Exception as e:
-                    args = {}
-                    print_error(f"解析工具参数失败: {str(e)}")
+                    print_error(f"调用模型接口失败: {str(e)}")
+                    return
 
-                print_tool_call(func_name, args)
+                choice = response.choices[0]
+                message = choice.message
 
-                # 权限拦截判断
-                execute_allowed = True
-                should_ask, desc = self.permission_mgr.should_ask(func_name, args)
-                if should_ask:
-                    choice = ask_permission_choice(desc)
-                    if choice == "a":
-                        self.permission_mgr.mode = PermissionMode.YOLO
-                        print_yolo_status(True)
-                        execute_allowed = True
-                    elif choice == "y":
-                        execute_allowed = True
+                # 如果模型给出了文本回复
+                if message.content:
+                    print_assistant_message(message.content)
+
+                # 将 assistant 消息存入历史记录
+                assistant_msg_dict: Dict[str, Any] = {
+                    "role": "assistant",
+                    "content": message.content or "",
+                }
+
+                if message.tool_calls:
+                    assistant_msg_dict["tool_calls"] = [
+                        tc.model_dump() for tc in message.tool_calls
+                    ]
+
+                self.messages.append(assistant_msg_dict)
+
+                # 如果模型没有调用任何工具，说明当前任务完成
+                if not message.tool_calls:
+                    break
+
+                # 逐个执行工具调用
+                for tool_call in message.tool_calls:
+                    func_name = tool_call.function.name
+                    call_id = tool_call.id
+
+                    # 解析工具参数
+                    try:
+                        args = json.loads(tool_call.function.arguments)
+                    except Exception as e:
+                        args = {}
+                        print_error(f"解析工具参数失败: {str(e)}")
+
+                    print_tool_call(func_name, args)
+
+                    # 权限拦截判断
+                    execute_allowed = True
+                    should_ask, desc = self.permission_mgr.should_ask(func_name, args)
+                    if should_ask:
+                        choice = ask_permission_choice(desc)
+                        if choice == "a":
+                            self.permission_mgr.mode = PermissionMode.YOLO
+                            print_yolo_status(True)
+                            execute_allowed = True
+                        elif choice == "y":
+                            execute_allowed = True
+                        else:
+                            execute_allowed = False
+
+                    if not execute_allowed:
+                        tool_output = "用户拒绝了执行此操作的权限。"
                     else:
-                        execute_allowed = False
+                        shared_state.set_active_tool(func_name, args)
+                        try:
+                            with console.status(f"[bold yellow]正在执行工具: {func_name}...[/bold yellow]", spinner="line"):
+                                tool_output = registry.execute(func_name, args)
+                        finally:
+                            shared_state.clear_active_tool()
 
-                if not execute_allowed:
-                    tool_output = "用户拒绝了执行此操作的权限。"
-                else:
-                    with console.status(f"[bold yellow]正在执行工具: {func_name}...[/bold yellow]", spinner="line"):
-                        tool_output = registry.execute(func_name, args)
+                    # 展示工具结果
+                    print_tool_result(func_name, tool_output)
 
-                # 展示工具结果
-                print_tool_result(func_name, tool_output)
+                    # 将工具执行结果存入上下文
+                    self.messages.append({
+                        "role": "tool",
+                        "tool_call_id": call_id,
+                        "content": tool_output,
+                    })
 
-                # 将工具执行结果存入上下文
-                self.messages.append({
-                    "role": "tool",
-                    "tool_call_id": call_id,
-                    "content": tool_output,
-                })
-        
-        if step_count >= self.config.max_steps:
-            print_info(f"已达到单次任务最大步数限制 ({self.config.max_steps} 步)。")
+            if step_count >= self.config.max_steps:
+                print_info(f"已达到单次任务最大步数限制 ({self.config.max_steps} 步)。")
+        finally:
+            shared_state.set_status("IDLE")
+            shared_state.clear_active_tool()

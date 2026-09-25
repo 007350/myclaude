@@ -10,7 +10,7 @@ from ..mcp import default_mcp_manager
     name="add_mcp_server",
     description="在当前运行会话中动态添加并连接一个新的外部 MCP 服务（如 npx 或已有脚本），并持久化到 mcp.json。添加后你将立即获得该服务提供的所有工具。"
 )
-def add_mcp_server(name: str, command: str, args: List[str] = None) -> str:
+def add_mcp_server(name: str, command: str, args: List[str] = None, env: dict = None) -> str:
     """动态添加现有的 MCP 服务并立即连接"""
     args = args or []
     try:
@@ -18,6 +18,7 @@ def add_mcp_server(name: str, command: str, args: List[str] = None) -> str:
             name=name,
             command=command,
             args=args,
+            env=env,
             persist=True
         )
         return (

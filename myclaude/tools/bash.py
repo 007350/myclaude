@@ -47,34 +47,57 @@ def truncate_output(text: str, max_lines: int = 150, max_chars: int = 12000) -> 
     description="在本地系统运行 shell 命令行。可用于查看状态、执行测试、git 操作、构建等。Windows 下使用 PowerShell 执行。"
 )
 def run_command(command: str) -> str:
-    """运行终端命令并返回输出"""
+    """运行终端命令并返回输出，支持实时流式日志捕获与动态中断"""
     is_win = platform.system() == "Windows"
     shell_cmd = ["powershell", "-NoProfile", "-Command", command] if is_win else ["bash", "-c", command]
 
     try:
-        process = subprocess.run(
+        from ..core import shared_state
+        shared_state.append_log(f"> {command}")
+
+        process = subprocess.Popen(
             shell_cmd,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
-            timeout=120,
             cwd=os.getcwd(),
             encoding="utf-8",
             errors="replace"
         )
-        output = process.stdout
-        if process.stderr:
-            output += ("\n[Stderr]:\n" + process.stderr)
 
-        output = output.strip()
+        output_lines = []
+        import time
+        start_time = time.time()
+        timeout = 180
+
+        while True:
+            # 检查是否有侧边栏发来的中断指令
+            if shared_state.check_and_clear_interrupt():
+                process.terminate()
+                shared_state.append_log("⚠️ 进程已被用户通过侧边窗口强制中断。")
+                return "[命令已被侧边伴生窗口强制终止]"
+
+            line = process.stdout.readline()
+            if line:
+                output_lines.append(line)
+                shared_state.append_log(line)
+            elif process.poll() is not None:
+                break
+
+            if time.time() - start_time > timeout:
+                process.terminate()
+                return "错误: 命令执行超时 (超过 180 秒已自动终止)"
+
+            time.sleep(0.01)
+
+        returncode = process.poll()
+        output = "".join(output_lines).strip()
         if not output:
-            output = f"(命令执行成功，无输出，退出码: {process.returncode})"
+            output = f"(命令执行成功，无输出，退出码: {returncode})"
         else:
-            if process.returncode != 0:
-                output = f"[退出码 {process.returncode}]\n" + output
+            if returncode != 0:
+                output = f"[退出码 {returncode}]\n" + output
 
         return truncate_output(output)
-    except subprocess.TimeoutExpired:
-        return "错误: 命令执行超时 (超过 120 秒已自动终止)"
     except Exception as e:
         return f"命令执行异常: {str(e)}"

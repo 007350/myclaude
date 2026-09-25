@@ -77,8 +77,15 @@ def main():
     from .mcp import default_mcp_manager as mcp_manager
     mcp_count = mcp_manager.load_and_connect_all()
 
+    # 启动侧边伴生窗口通信 IPC 服务
+    from .core import ipc_server
+    try:
+        sidecar_port = ipc_server.start()
+    except Exception:
+        sidecar_port = 0
+
     agent = Agent(config)
-    print_welcome(model_name=config.model_name, cwd=os.getcwd(), mcp_count=mcp_count)
+    print_welcome(model_name=config.model_name, cwd=os.getcwd(), mcp_count=mcp_count, sidecar_port=sidecar_port)
 
     try:
         while True:
@@ -136,6 +143,7 @@ def main():
                 print_error(f"发生未预期错误: {str(e)}")
     finally:
         mcp_manager.shutdown()
+        ipc_server.stop()
 
 
 if __name__ == "__main__":

@@ -23,13 +23,15 @@ if hasattr(sys.stderr, "reconfigure"):
 console = Console(legacy_windows=False)
 
 
-def print_welcome(model_name: str, cwd: str, mcp_count: int = 0):
+def print_welcome(model_name: str, cwd: str, mcp_count: int = 0, sidecar_port: int = 0):
     text = Text()
     text.append("🤖 MyClaude Agent CLI\n", style="bold cyan")
     text.append(f"• 模型: {model_name}\n", style="green")
     text.append(f"• 工作区: {cwd}\n", style="yellow")
     if mcp_count > 0:
         text.append(f"• MCP 插件: 已挂载 ({mcp_count} 个外部工具)\n", style="bold magenta")
+    if sidecar_port > 0:
+        text.append(f"• 伴生窗口: 监听端口 {sidecar_port}（可在侧边终端运行 python sidecar.py 连通）\n", style="bold blue")
     text.append("• 输入具体任务，Agent 会自主思考、读取与编写代码、执行命令\n", style="dim")
     text.append("• 常用命令: /yolo (极速放行), /mcp (查看插件), /clear (清空上下文), /exit (退出)", style="dim italic")
 
