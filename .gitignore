@@ -8,6 +8,7 @@
 
 # Agent local logs & user history
 .myclaude/
+.workbuddy/
 *.log
 
 # Python bytecode and build artifacts
