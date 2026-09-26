@@ -140,12 +140,13 @@ class ContextManager:
                 # 限制中间摘要的单条长度
                 dialogue_text.append(f"[{role}]: {content[:400]}")
 
+        dialogue_block = "\n".join(dialogue_text)
         prompt = f"""你是一个专业的任务历史浓缩专家。
 用户最初的目标是: "{root_user_msg.get('content', '')}"
 
 以下是主 Agent 刚刚执行的一段历史记录（中间已执行的若干步骤与工具操作）：
 --------------------------------------------------
-{"\n".join(dialogue_text)}
+{dialogue_block}
 --------------------------------------------------
 
 请为上述执行过程生成一份极为紧凑的【阶段性进展浓缩摘要】，以便 Agent 在清空冗余历史后能无缝继续推进任务。
