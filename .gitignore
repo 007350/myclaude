@@ -33,3 +33,6 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local MCP server config (may contain credentials) — keep example only
+mcp.json
