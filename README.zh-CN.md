@@ -151,7 +151,7 @@ myclaude/
 ├── custom_mcp_servers/         # Agent 自进化生成的本地 MCP 服务
 ├── examples/                   # MCP 服务端示例 (FastMCP)
 ├── docs/                       # 交互式架构学习指南 (GitHub Pages)
-└── tests/                      # 单元测试套件（31 个测试）
+└── tests/                      # 单元测试套件（33 个测试）
 ```
 
 ---

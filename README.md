@@ -41,7 +41,7 @@ A short session (illustrative):
 📖 read_file("tests/test_editor.py")     → lines 1-60
 🔧 run_command("python -m unittest ...")  → 1 test failed
 🔧 edit_file("myclaude/tools/editor.py", ...)  ✎ 5-tier match: fuzzy(0.94)
-🔧 run_command("python -m unittest ...")  → OK (31 tests)
+🔧 run_command("python -m unittest ...")  → OK (33 tests)
 ✅ done in 4 steps
 
 👉 myclaude > /undo
@@ -184,7 +184,7 @@ myclaude/
 ├── custom_mcp_servers/         # Agent-generated local MCP servers
 ├── examples/                   # FastMCP server examples
 ├── docs/                       # Interactive architecture learning guide (GitHub Pages)
-└── tests/                      # 31 unit tests
+└── tests/                      # 33 unit tests
 ```
 
 ---

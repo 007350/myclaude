@@ -32,7 +32,7 @@ in pure Python.
 - **Dual-track Sidecar companion terminal** (`sidecar.py`) with live logs and
   out-of-band `/steer` / `/interrupt`.
 - **YOLO fast mode** with a permission guard for high-risk commands.
-- 31 unit tests covering compaction, editing, snapshots, parsing and more.
+- 33 unit tests covering compaction, editing, snapshots, parsing, package imports and more.
 
 [Unreleased]: https://github.com/007350/myclaude/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/007350/myclaude/releases/tag/v0.1.0

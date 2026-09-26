@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from openai import OpenAI
 
 from .config import Config
+from .security import PermissionManager, PermissionMode
 from .tools import registry
 from .core import (
     shared_state,
