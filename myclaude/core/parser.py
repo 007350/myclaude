@@ -5,10 +5,37 @@ from typing import Tuple, Dict, Any
 
 COMMON_PARAM_ALIASES = {
     "path": ["file_path", "filepath", "filename", "file", "target_path", "target_file"],
-    "old_str": ["old_string", "search", "target_str", "target_string", "old_code", "old", "original"],
+    "old_str": ["old_string", "target_str", "target_string", "old_code", "old", "original"],
     "new_str": ["new_string", "replace", "new_code", "replacement", "new", "updated"],
     "command": ["cmd", "shell_cmd", "shell_command", "script", "exec"],
     "content": ["text", "code", "file_content", "body"],
+}
+
+FUNCTION_SPECIFIC_ALIASES = {
+    "code_search": {
+        "query": ["keyword", "search", "search_term", "q", "pattern", "text"],
+        "path": ["dir", "directory", "root", "search_path"],
+        "file_pattern": ["glob", "extension", "file_type", "type"],
+    },
+    "find_files": {
+        "pattern": ["query", "file_pattern", "glob", "name", "filename", "search"],
+        "path": ["dir", "directory", "root"],
+    },
+    "edit_file": {
+        "path": ["file_path", "filepath", "filename", "file", "target_path", "target_file"],
+        "old_str": ["old_string", "search", "target_str", "target_string", "old_code", "old", "original"],
+        "new_str": ["new_string", "replace", "new_code", "replacement", "new", "updated"],
+    },
+    "read_file": {
+        "path": ["file_path", "filepath", "filename", "file", "target_path", "target_file"],
+    },
+    "write_file": {
+        "path": ["file_path", "filepath", "filename", "file", "target_path", "target_file"],
+        "content": ["text", "code", "file_content", "body"],
+    },
+    "run_command": {
+        "command": ["cmd", "shell_cmd", "shell_command", "script", "exec"],
+    },
 }
 
 
@@ -87,15 +114,24 @@ def robust_json_parse(raw: str) -> Tuple[bool, Dict[str, Any], str]:
 def normalize_parameters(func_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     """
     参数别名对齐器：
-    自动将 LLM 幻觉出的别名（如 file_path, filename）映射回真正的标准入参名（如 path）
+    自动将 LLM 幻觉出的别名（如 file_path, keyword, search）映射回真正的标准入参名
     """
     normalized = dict(args)
 
+    # 1. 优先使用函数专属的别名映射表
+    specific_aliases = FUNCTION_SPECIFIC_ALIASES.get(func_name, {})
+    for standard_name, aliases in specific_aliases.items():
+        if standard_name not in normalized:
+            for alias in aliases:
+                if alias in normalized:
+                    normalized[standard_name] = normalized.pop(alias)
+                    break
+
+    # 2. 兜底使用通用别名映射表
     for standard_name, aliases in COMMON_PARAM_ALIASES.items():
         if standard_name not in normalized:
             for alias in aliases:
                 if alias in normalized:
-                    # 发现别名，平移为标准参数名并保留原值
                     normalized[standard_name] = normalized.pop(alias)
                     break
 
