@@ -1,22 +1,35 @@
 # Environment variables and secrets
 .env
+.env.*
+!.env.example
 
-# Python bytecode
+# Runtime temporary files
+.myclaude_port
+
+# Agent local logs & user history
+.myclaude/
+*.log
+
+# Python bytecode and build artifacts
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+dist/
+build/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Virtual environments
 venv/
 .venv/
 env/
 
-# IDE & OS
+# IDE & OS specific files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-
-# Agent temp logs & history
-.myclaude/
-*.log

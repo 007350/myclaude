@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyClaude 智能体架构深入剖析与 LangGraph 进阶学习指南</title>
+  <style>
+    :root {
+      --bg-primary: #0a0f1d;
+      --bg-secondary: #111827;
+      --bg-card: #1f2937;
+      --bg-hover: #374151;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --accent-cyan: #06b6d4;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --border-color: #374151;
+      --code-bg: #0d1117;
+      --radius: 12px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding-bottom: 60px;
+    }
+
+    /* 顶部导航与 Header */
+    header {
+      background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(31, 41, 55, 0.8));
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 32px;
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.3rem;
+      padding: 8px 14px;
+      border-radius: 10px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+    }
+
+    .header-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #fff, #93c5fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-title p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* 导航 Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      background: var(--bg-secondary);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    /* 容器布局 */
+    .container {
+      max-width: 1400px;
+      margin: 28px auto 0;
+      padding: 0 24px;
+    }
+
+    .tab-pane {
+      display: none;
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 卡片通用 */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(6, 182, 212, 0.4);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .card-title .icon {
+      font-size: 1.3rem;
+    }
+
+    /* 标签与徽章 */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-cyan { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border: 1px solid rgba(6, 182, 212, 0.3); }
+    .badge-purple { background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); }
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-rose { background: rgba(244, 63, 94, 0.15); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.3); }
+
+    /* ========================================================
+       TAB 1: 架构全景与执行流
+       ======================================================== */
+    .flow-stepper {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .flow-step-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 16px 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .flow-step-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--accent-cyan);
+    }
+
+    .flow-step-btn.active {
+      background: linear-gradient(145deg, #1e293b, #0f172a);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
+    }
+
+    .flow-step-num {
+      width: 24px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin: 0 auto 8px;
+    }
+
+    .flow-step-btn.active .flow-step-num {
+      background: var(--accent-cyan);
+      color: #000;
+    }
+
+    .flow-step-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .flow-step-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .flow-detail-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--accent-cyan);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 28px;
+      box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.05);
+    }
+
+    .flow-detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--accent-purple);
+    }
+
+    .feature-card h4 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+    }
+
+    .feature-card p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* ========================================================
+       TAB 2: 模块剖析与文件浏览器
+       ======================================================== */
+    .explorer-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .explorer-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .tree-panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 16px;
+      height: 720px;
+      overflow-y: auto;
+    }
+
+    .tree-search {
+      width: 100%;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+      outline: none;
+    }
+
+    .tree-search:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .tree-folder {
+      margin-bottom: 10px;
+    }
+
+    .tree-folder-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .tree-folder-title:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tree-items {
+      margin-left: 18px;
+      padding-left: 8px;
+      border-left: 1px dashed var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: 4px;
+    }
+
+    .tree-file {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.15s ease;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .tree-file:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .tree-file.active {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      font-weight: 600;
+      border-left: 2px solid var(--accent-blue);
+    }
+
+    .detail-panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 28px;
+      height: 720px;
+      overflow-y: auto;
+    }
+
+    .detail-header {
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .detail-header h3 {
+      font-size: 1.4rem;
+      font-family: ui-monospace, Consolas, monospace;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .detail-section {
+      margin-bottom: 22px;
+    }
+
+    .detail-section h4 {
+      font-size: 0.95rem;
+      color: var(--accent-cyan);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .detail-section p, .detail-section ul {
+      font-size: 0.9rem;
+      color: #d1d5db;
+    }
+
+    .detail-section ul {
+      margin-left: 20px;
+      margin-top: 6px;
+    }
+
+    .detail-section li {
+      margin-bottom: 4px;
+    }
+
+    .code-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+
+    /* ========================================================
+       TAB 3: 原生架构 vs LangGraph 对照
+       ======================================================== */
+    .compare-nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .compare-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .compare-btn.active {
+      background: rgba(139, 92, 246, 0.2);
+      border-color: var(--accent-purple);
+      color: #c084fc;
+    }
+
+    .compare-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .compare-split {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .split-col {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .split-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .split-header h4 {
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    /* ========================================================
+       TAB 4: 四阶进阶学习路线
+       ======================================================== */
+    .progress-bar-container {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .progress-info {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .progress-bar-outer {
+      background: rgba(255, 255, 255, 0.1);
+      height: 10px;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-bar-inner {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+      border-radius: 5px;
+      transition: width 0.4s ease;
+    }
+
+    .roadmap-list {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .stage-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 24px;
+      position: relative;
+      transition: border-color 0.2s ease;
+    }
+
+    .stage-card:hover {
+      border-color: var(--accent-blue);
+    }
+
+    .stage-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .stage-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stage-meta {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .task-checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .task-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-color);
+    }
+
+    .task-item.completed {
+      background: rgba(16, 185, 129, 0.05);
+      border-color: rgba(16, 185, 129, 0.2);
+    }
+
+    .task-item.completed .task-text {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    .task-checkbox {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent-green);
+      cursor: pointer;
+      margin-top: 2px;
+    }
+
+    .task-text {
+      flex: 1;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .task-files {
+      margin-top: 4px;
+      font-size: 0.78rem;
+      color: var(--accent-cyan);
+      font-family: ui-monospace, monospace;
+    }
+
+    /* 滚动条 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部导航 -->
+  <header>
+    <div class="header-content">
+      <div class="logo-group">
+        <div class="logo-badge">MYCLAUDE</div>
+        <div class="header-title">
+          <h1>智能体架构剖析 & LangGraph 进阶互动指南</h1>
+          <p>基于 Claude Code Python 本地版原型的深度学习平台</p>
+        </div>
+      </div>
+      <nav class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('arch')">🏗️ 架构全景</button>
+        <button class="tab-btn" onclick="switchTab('explorer')">📁 模块剖析</button>
+        <button class="tab-btn" onclick="switchTab('compare')">⚖️ 对照 LangGraph</button>
+        <button class="tab-btn" onclick="switchTab('roadmap')">🗺️ 学习路线</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ========================================================
+         TAB 1: 架构全景与执行流
+         ======================================================== -->
+    <div id="tab-arch" class="tab-pane active">
+      
+      <!-- 执行流步进交互器 -->
+      <div class="card">
+        <div class="card-title">
+          <span class="icon">🔄</span>
+          <span>ReAct 任务执行自循环管道 (点击任意步骤探究底层机制)</span>
+        </div>
+
+        <div class="flow-stepper" id="flowStepper">
+          <div class="flow-step-btn active" onclick="selectFlowStep(0)">
+            <div class="flow-step-num">1</div>
+            <div class="flow-step-title">用户输入与装载</div>
+            <div class="flow-step-sub">CLAUDE.md & Skills</div>
+          </div>
+          <div class="flow-step-btn" onclick="selectFlowStep(1)">
+            <div class="flow-step-num">2</div>
+            <div class="flow-step-title">上下文自平衡</div>
+            <div class="flow-step-sub">Tier 1/2 梯级裁剪</div>
+          </div>
+          <div class="flow-step-btn" onclick="selectFlowStep(2)">
+            <div class="flow-step-num">3</div>
+            <div class="flow-step-title">大模型推理</div>
+            <div class="flow-step-sub">KV Cache 缓存优化</div>
+          </div>
+          <div class="flow-step-btn" onclick="selectFlowStep(3)">
+            <div class="flow-step-num">4</div>
+            <div class="flow-step-title">容错参数解析</div>
+            <div class="flow-step-sub">自愈对齐与别名归一</div>
+          </div>
+          <div class="flow-step-btn" onclick="selectFlowStep(4)">
+            <div class="flow-step-num">5</div>
+            <div class="flow-step-title">权限守卫拦截</div>
+            <div class="flow-step-sub">YOLO / Normal 确认</div>
+          </div>
+          <div class="flow-step-btn" onclick="selectFlowStep(5)">
+            <div class="flow-step-num">6</div>
+            <div class="flow-step-title">工具执行与回滚网</div>
+            <div class="flow-step-sub">影子快照 / Commit</div>
+          </div>
+          <div class="flow-step-btn" onclick="selectFlowStep(6)">
+            <div class="flow-step-num">7</div>
+            <div class="flow-step-title">观察与终止判断</div>
+            <div class="flow-step-sub">Loop or Complete</div>
+          </div>
+        </div>
+
+        <div class="flow-detail-box" id="flowDetailBox">
+          <!-- 动态渲染步骤详情 -->
+        </div>
+
+      </div>
+
+      <!-- 六大工业级护城河特性 -->
+      <div class="card">
+        <div class="card-title">
+          <span class="icon">🛡️</span>
+          <span>MyClaude 六大工业级核心护城河</span>
+        </div>
+
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h4><span class="badge badge-cyan">特性 1</span> 五级容错代码替换 (edit_file)</h4>
+            <p>不使用盲目的全量覆写，支持精确字符、换行符归一(CRLF/LF)、行尾空白忽略、缩进自适应对齐与 88% 模糊相似匹配，改代码极稳且省 Token。</p>
+            <span class="badge badge-purple">myclaude/tools/editor.py</span>
+          </div>
+
+          <div class="feature-card">
+            <h4><span class="badge badge-green">特性 2</span> 双级上下文压缩 (Context Compactor)</h4>
+            <p>软裁剪折叠早期庞大工具输出，硬压缩调用大模型提取阶段性三要素微摘要。彻底根治长任务爆窗与长指令稀释。</p>
+            <span class="badge badge-purple">myclaude/core/context.py</span>
+          </div>
+
+          <div class="feature-card">
+            <h4><span class="badge badge-amber">特性 3</span> 秒级原子快照与回滚 (/undo)</h4>
+            <p>在磁盘物理写入前保留原始文件状态，支持一键原子级撤回并将还原事件注入 Agent 记忆，防止死循环撞墙。</p>
+            <span class="badge badge-purple">myclaude/core/snapshot.py</span>
+          </div>
+
+          <div class="feature-card">
+            <h4><span class="badge badge-rose">特性 4</span> 渐进式技能揭示 (Skills Engine)</h4>
+            <p>系统提示词中仅常驻 &lt;50 Token 的轻量 Catalog，需要时按需全量激活加载并配套执行专属脚本。</p>
+            <span class="badge badge-purple">myclaude/core/skills.py</span>
+          </div>
+
+          <div class="feature-card">
+            <h4><span class="badge badge-cyan">特性 5</span> MCP 协议与能力自进化 (FastMCP)</h4>
+            <p>原生支持 Anthropic MCP 标准；Agent 能根据任务动态写出 Python FastMCP 脚本并在当前对话零重启热加载！</p>
+            <span class="badge badge-purple">myclaude/mcp/ & tools/mcp_ops.py</span>
+          </div>
+
+          <div class="feature-card">
+            <h4><span class="badge badge-purple">特性 6</span> 双轨伴生协同监控 (Sidecar IPC)</h4>
+            <p>主终端与 sidecar.py 伴生窗口双轨并行，支持跨进程共享黑板状态订阅、实时战略下发与卡死任务紧急中断。</p>
+            <span class="badge badge-purple">sidecar.py & core/state.py</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ========================================================
+         TAB 2: 模块剖析与文件浏览器
+         ======================================================== -->
+    <div id="tab-explorer" class="tab-pane">
+      <div class="explorer-layout">
+        
+        <!-- 左侧文件树 -->
+        <div class="tree-panel">
+          <input type="text" class="tree-search" id="treeSearchInput" placeholder="🔍 搜索文件或核心类..." oninput="filterFileTree()" />
+          
+          <div class="tree-folder">
+            <div class="tree-folder-title">📁 myclaude/core (底座核心)</div>
+            <div class="tree-items">
+              <div class="tree-file active" onclick="showFileDetail('state.py')">📄 state.py</div>
+              <div class="tree-file" onclick="showFileDetail('context.py')">📄 context.py</div>
+              <div class="tree-file" onclick="showFileDetail('memory.py')">📄 memory.py</div>
+              <div class="tree-file" onclick="showFileDetail('skills.py')">📄 skills.py</div>
+              <div class="tree-file" onclick="showFileDetail('snapshot.py')">📄 snapshot.py</div>
+              <div class="tree-file" onclick="showFileDetail('parser.py')">📄 parser.py</div>
+            </div>
+          </div>
+
+          <div class="tree-folder">
+            <div class="tree-folder-title">📁 myclaude/tools (工具生态)</div>
+            <div class="tree-items">
+              <div class="tree-file" onclick="showFileDetail('editor.py')">📄 editor.py</div>
+              <div class="tree-file" onclick="showFileDetail('bash.py')">📄 bash.py</div>
+              <div class="tree-file" onclick="showFileDetail('file_ops.py')">📄 file_ops.py</div>
+              <div class="tree-file" onclick="showFileDetail('search.py')">📄 search.py</div>
+              <div class="tree-file" onclick="showFileDetail('mcp_ops.py')">📄 mcp_ops.py</div>
+              <div class="tree-file" onclick="showFileDetail('skill_ops.py')">📄 skill_ops.py</div>
+              <div class="tree-file" onclick="showFileDetail('registry.py')">📄 registry.py</div>
+            </div>
+          </div>
+
+          <div class="tree-folder">
+            <div class="tree-folder-title">📁 myclaude/mcp & security</div>
+            <div class="tree-items">
+              <div class="tree-file" onclick="showFileDetail('mcp_manager.py')">📄 mcp/manager.py</div>
+              <div class="tree-file" onclick="showFileDetail('permissions.py')">📄 security/permissions.py</div>
+            </div>
+          </div>
+
+          <div class="tree-folder">
+            <div class="tree-folder-title">📁 主控与外部扩展</div>
+            <div class="tree-items">
+              <div class="tree-file" onclick="showFileDetail('agent.py')">📄 agent.py</div>
+              <div class="tree-file" onclick="showFileDetail('cli.py')">📄 cli.py</div>
+              <div class="tree-file" onclick="showFileDetail('sidecar.py')">📄 sidecar.py</div>
+              <div class="tree-file" onclick="showFileDetail('skill_md.py')">📄 skills/git-workflow</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 右侧详细视图 -->
+        <div class="detail-panel" id="fileDetailPanel">
+          <!-- 动态渲染选中的文件内容 -->
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========================================================
+         TAB 3: 原生架构 vs LangGraph 对照
+         ======================================================== -->
+    <div id="tab-compare" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span class="icon">⚖️</span>
+          <span>手写 ReAct 架构与 LangGraph 工业框架深度映射</span>
+        </div>
+
+        <div class="compare-nav" id="compareNav">
+          <button class="compare-btn active" onclick="switchCompare(0)">1. 状态定义与黑板管理</button>
+          <button class="compare-btn" onclick="switchCompare(1)">2. 循环编排与条件分支</button>
+          <button class="compare-btn" onclick="switchCompare(2)">3. 工具分发与调度</button>
+          <button class="compare-btn" onclick="switchCompare(3)">4. 人机协同 (Human-in-the-Loop)</button>
+          <button class="compare-btn" onclick="switchCompare(4)">5. 快照回滚与时间旅行</button>
+        </div>
+
+        <div class="compare-split" id="compareContent">
+          <!-- 动态插入代码与机制对比 -->
+        </div>
+
+        <div class="card-title" style="margin-top: 20px;">
+          <span class="icon">💡</span>
+          <span>重构核心心法总结</span>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.7;" id="compareSummary">
+          <!-- 动态注入总结 -->
+        </p>
+
+      </div>
+    </div>
+
+    <!-- ========================================================
+         TAB 4: 四阶进阶学习路线
+         ======================================================== -->
+    <div id="tab-roadmap" class="tab-pane">
+      
+      <!-- 进度打卡卡片 -->
+      <div class="progress-bar-container">
+        <div class="progress-info">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <h3 style="font-size: 1.15rem; color: #fff;">🏆 学习总进度打卡</h3>
+            <span id="progressPercent" style="font-size: 1.25rem; font-weight: 800; color: var(--accent-green);">0%</span>
+          </div>
+          <div class="progress-bar-outer">
+            <div class="progress-bar-inner" id="progressBar"></div>
+          </div>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">
+          已完成 <span id="completedCount" style="color: #fff; font-weight: 700;">0</span> / <span id="totalTasksCount">16</span> 项核心实战任务
+        </div>
+      </div>
+
+      <!-- 路线列表 -->
+      <div class="roadmap-list" id="roadmapList">
+        <!-- 动态生成 4 阶段路线 -->
+      </div>
+
+    </div>
+
+  </main>
+
+  <script>
+    // ==========================================
+    // 1. Tab 切换逻辑
+    // ==========================================
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+      event.currentTarget.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+    }
+
+    // ==========================================
+    // 2. Flow Stepper 数据与交互
+    // ==========================================
+    const flowSteps = [
+      {
+        step: "步骤 1: 用户输入与长期规范动态装配",
+        file: "myclaude/agent.py (Agent._build_system_prompt)",
+        desc: "接收用户任务输入。通过 core/memory.py 自动层级探测 ~/.claude/CLAUDE.md 与当前项目 ./CLAUDE.md 并合并；同时由 core/skills.py 生成轻量级技能目录清单，组装出包含环境、规范与约束的 System Prompt。",
+        langgraph: "在 LangGraph 中对应在调用模型前注入动态 SystemMessage，或通过 pre-model 节点动态读取当前 workspace 规范。"
+      },
+      {
+        step: "步骤 2: 上下文拥挤度自平衡与梯级瘦身",
+        file: "myclaude/core/context.py (ContextManager.auto_balance)",
+        desc: "在呼叫模型前进行 Token 估算。若超过软阈值 (25,000 Tokens)，触发 Tier 1 软裁剪，将陈旧的工具执行日志折叠首尾；若突破硬阈值 (45,000 Tokens)，调用 LLM 深度抽取【已达成/工作状态/遗留目标】三要素阶段微摘要，保持 System Prompt 静态缓存前缀。",
+        langgraph: "在 LangGraph 中对应定义 State Pre-processing Node，或使用 langchain_core.messages.trim_messages 与独立 Summarization Subgraph（摘要子图）进行状态压缩。"
+      },
+      {
+        step: "步骤 3: 大模型 API 推理与 Prompt Caching 命中",
+        file: "myclaude/agent.py & tools/registry.py",
+        desc: "呼叫 OpenAI 兼容接口。tool_schemas 经过 registry.get_schemas() 按函数名字典序做确定性严格排序，确保发送的 JSON 串头部一致，最大化激活服务商（如 DeepSeek/Anthropic）的 KV Cache 缓存，降低 80%+ 延迟和成本。",
+        langgraph: "对应 LangGraph 的 Call Model 节点。模型配置 bind_tools(tools)，通过结构化工具绑定生成 tool_calls。"
+      },
+      {
+        step: "步骤 4: 鲁棒参数解析与自愈反馈机制",
+        file: "myclaude/core/parser.py (robust_json_parse & normalize_parameters)",
+        desc: "模型给出的 tool_calls 经常包含 Markdown 围栏、尾随逗号或键名幻觉。解析器先四级修复 JSON，再自动把模型幻觉出的参数名（如 file_path、target_str、cmd）归一化回标准入参（path、old_str、command）。若彻底无法解析，主动生成 tool error 消息反馈给模型自愈。",
+        langgraph: "对应 LangGraph 中 ToolNode 内部的参数验证器或异常重试分支（Fallback Edge）。"
+      },
+      {
+        step: "步骤 5: 人工介入与权限守卫拦截 (Human-in-the-Loop)",
+        file: "myclaude/security/permissions.py (PermissionManager.should_ask)",
+        desc: "根据当前模式（NORMAL / STRICT / YOLO）判断是否拦截高危操作（破坏性命令、格式化、不可逆写文件）。安全模式下弹出交互卡片 [y]单次允许 / [a]切换YOLO / [n]拒绝；若用户拒绝则构造拒绝结果回传模型调整策略。",
+        langgraph: "对应 LangGraph 核心杀手锏特性 interrupt()。图会在工具执行边前自动挂起暂停，持久化当前线程状态，等待人类输入后再恢复图执行。"
+      },
+      {
+        step: "步骤 6: 工具执行与影子快照提交 (Atomic Snapshot)",
+        file: "myclaude/core/snapshot.py & tools/editor.py & tools/bash.py",
+        desc: "工具真正修改文件前，snapshot_manager 自动将目标文件的原始版本抓取入暂存区。工具执行成功后，将本轮修改打包为一个 Checkpoint 压入 Undo 栈，供用户随时通过 /undo 秒级无损撤回。",
+        langgraph: "对应 LangGraph 的 Checkpointer（如 SqliteSaver、MemorySaver）与 Time Travel。每次状态跃迁自动生成 checkpoint_id，随时回溯历史状态。"
+      },
+      {
+        step: "步骤 7: 观察结果注入与循环终止条件判断",
+        file: "myclaude/agent.py (while step_count < max_steps)",
+        desc: "将 tool_output 作为 role: 'tool' 的消息追加至上下文历史。如果模型本轮只给出了文本回复且没有发起任何 tool_calls，则说明当前任务已解决，跳出循环进入下一轮用户输入提示符。",
+        langgraph: "对应 LangGraph 的条件分支边 (Conditional Edge / tools_condition)。若 message.tool_calls 存在则路由到 'tools' 节点，否则路由到 END 终止节点。"
+      }
+    ];
+
+    function selectFlowStep(index) {
+      document.querySelectorAll('.flow-step-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === index);
+      });
+      const data = flowSteps[index];
+      const box = document.getElementById('flowDetailBox');
+      box.innerHTML = `
+        <div class="flow-detail-header">
+          <div>
+            <h3 style="font-size: 1.15rem; color: #fff; margin-bottom: 4px;">${data.step}</h3>
+            <span class="badge badge-purple" style="font-family: monospace;">${data.file}</span>
+          </div>
+          <span class="badge badge-cyan">核心机制深度拆解</span>
+        </div>
+        <p style="font-size: 0.92rem; color: #e2e8f0; margin-bottom: 14px; line-height: 1.6;">${data.desc}</p>
+        <div style="background: rgba(0,0,0,0.3); border-left: 3px solid var(--accent-green); padding: 10px 14px; border-radius: 4px;">
+          <strong style="color: var(--accent-green); font-size: 0.85rem;">🔄 LangGraph 框架对应解法：</strong>
+          <span style="font-size: 0.88rem; color: #d1d5db;">${data.langgraph}</span>
+        </div>
+      `;
+    }
+
+    // ==========================================
+    // 3. 文件浏览器数据
+    // ==========================================
+    const filesDetail = {
+      "state.py": {
+        title: "myclaude/core/state.py",
+        subtitle: "全局黑板状态机与伴生窗口 IPC 通信服务",
+        pattern: "Blackboard Pattern (黑板模式) + HTTP IPC 守护进程",
+        responsibilities: [
+          "定义 SharedState 全局单例，集中维护 Agent 运行状态 (IDLE / RUNNING / WAITING_TOOL)、当前任务目标、步数、耗时以及滚动终端日志。",
+          "集成轻量级 ThreadingHTTPServer 跨进程通信服务（默认 9876 端口），自动将端口写入 .myclaude_port 供外部发现。",
+          "提供 /api/status（拉取执行大盘）、/api/steer（注入侧边栏动态干预指导）、/api/interrupt（紧急打断卡死命令）三个标准 REST 接口。"
+        ],
+        code: `class SharedState:
+    def __init__(self):
+        self._lock = threading.RLock()
+        self.status = "IDLE"
+        self.goal = ""
+        self.step = 0
+        self.active_tool: Optional[str] = None
+        self.recent_logs = deque(maxlen=200)
+        self.steering_queue: List[str] = []
+        self.interrupt_requested = False`,
+        langgraph: "在 LangGraph 中，状态由 TypedDict / MessagesState 统一管理；sidecar 的实时干预则相当于向运行中的线程发送 graph.update_state() 注入新指令。"
+      },
+      "context.py": {
+        title: "myclaude/core/context.py",
+        subtitle: "工业级双级上下文窗口压缩引擎 (Context Compactor)",
+        pattern: "Progressive Pruning & LLM Hierarchical Summarization (渐进式裁剪与分层摘要)",
+        responsibilities: [
+          "精准 Token 估算：优先采用 tiktoken (cl100k_base)，若未安装则采用中英文比例加权兜底，包含 tool_calls 签名与元数据开销统计。",
+          "Tier 1 软裁剪 (prune_stale_tool_outputs)：当历史轮次超出软阈值时，自动将早期过大的工具执行结果（大文件读入、长编译日志）折叠为首4行+尾3行，立减 50%+ 空间。",
+          "Tier 2 硬压缩 (compact_history)：当历史消息逼近模型极限时，调用大模型针对早期杂乱步骤浓缩为【已达成事项、当前状态、遗留未决目标】微摘要，保留 System Prompt 静态缓存前缀与最近 4 轮活跃记忆。"
+        ],
+        code: `class ContextManager:
+    def __init__(self, soft_token_limit: int = 25000, hard_token_limit: int = 45000, keep_recent_turns: int = 4):
+        self.soft_token_limit = soft_token_limit
+        self.hard_token_limit = hard_token_limit
+        self.keep_recent_turns = keep_recent_turns`,
+        langgraph: "LangGraph 推荐在状态图中插入 trim_messages 节点，或者设立一个条件边检测 token 长度，超标时路由至 Summarizer Node 完成状态无损重组。"
+      },
+      "memory.py": {
+        title: "myclaude/core/memory.py",
+        subtitle: "项目规范与长期记忆引擎 (CLAUDE.md)",
+        pattern: "Hierarchical Configuration Discovery (分层配置发现) + Project Scaffolding",
+        responsibilities: [
+          "层级规范发现：同时搜索全局目录 (~/.claude/CLAUDE.md) 与当前项目根目录 (./CLAUDE.md)，并将两层规范有序融合。",
+          "代码库智能指纹探测 (scan_and_generate_claude_md)：自动识别 Python(poetry/uv/pip)、Node.js(npm/pnpm/yarn/bun)、Rust(cargo)、Go(go.mod) 等生态及测试命令。",
+          "交互式规范初始化 (interactive_init_claude_md)：终端输入 /init 即可自动扫描环境、生成高亮规范草稿预览并支持微调后写入。"
+        ],
+        code: `def load_claude_md(cwd: Optional[Path] = None) -> Tuple[str, List[Path]]:
+    # 1. 探测全局配置 (~/.claude/CLAUDE.md)
+    # 2. 探测项目级配置 (./CLAUDE.md)
+    # 3. 结构化合并返回`,
+        langgraph: "可作为 LangGraph 工作流的初始化环境上下文（Environment Context），在编译图之前读取并作为只读 System Prompt 传入。"
+      },
+      "skills.py": {
+        title: "myclaude/core/skills.py",
+        subtitle: "可插拔专业技能库管理器 (Skills Engine)",
+        pattern: "Progressive Disclosure (渐进式披露模式)",
+        responsibilities: [
+          "渐进式披露核心设计：避免将海量专业领域规范全部灌进 Prompt，初始仅在 System Prompt 注入名字和触发词的轻量 Catalog (< 50 Token)。",
+          "支持 YAML Frontmatter 元数据解析（name, description, triggers），支持技能文件夹内配套存放自动化 scripts/ 脚本。",
+          "支持全局技能 (~/.myclaude/skills) 与项目级技能 (./skills)，项目级技能自动覆盖全局同名技能，支持 Agent 工具自主激活或用户 /skill 命令强注入。"
+        ],
+        code: `@dataclass
+class Skill:
+    name: str
+    description: str
+    triggers: List[str]
+    dir_path: Path
+    file_path: Path
+    scripts_dir: Optional[Path] = None
+    scripts: List[str] = field(default_factory=list)`,
+        langgraph: "在 LangGraph 中可被设计为专用子图（Subgraphs）。当识别到需要特定技能时，路由边动态转移至该技能专属的执行子图。"
+      },
+      "snapshot.py": {
+        title: "myclaude/core/snapshot.py",
+        subtitle: "影子快照与秒级原子回退引擎 (Atomic Safety Net)",
+        pattern: "Shadow Snapshot (影子快照) + Command/Undo Pattern (撤销模式)",
+        responsibilities: [
+          "物理写入前的透明抓取：write_file 与 edit_file 在落盘前，SnapshotManager 自动记录目标文件原始文本，已存在记录不重复覆盖，保留最初状态。",
+          "原子事务提交 (commit_checkpoint)：工具执行结束时将所有涉及修改的文件打包为一个 Checkpoint，记录时间戳与描述压入 Undo 栈。",
+          "秒级原子回退 (rollback_latest)：输入 /undo 弹出检查点，瞬间还原被改文件并从磁盘物理删除新增的文件，并将该回滚事件作为系统消息注入 Agent 记忆，防止 Agent 路径依赖。"
+        ],
+        code: `class SnapshotManager:
+    def record_before_change(self, file_path: str | Path, desc: str = ""):
+        # 在物理落盘前抓取原始文件内存快照
+    def commit_checkpoint(self, description: str = "") -> Optional[Checkpoint]:
+        # 步骤执行完毕后打包为原子快照
+    def rollback_latest(self) -> Tuple[bool, str, List[Path]]:
+        # 原子回滚文件并同步认知`,
+        langgraph: "完全对应 LangGraph 的 Checkpointer 机制。LangGraph 会持久化每个 step 的 State Snapshot，支持时间旅行（Time Travel）随时回滚到某一 checkpoint_id。"
+      },
+      "parser.py": {
+        title: "myclaude/core/parser.py",
+        subtitle: "鲁棒多阶段 JSON 修复器与参数别名自愈对齐",
+        pattern: "Fault-Tolerant Pipeline (容错管道模式) + Semantic Alias Normalization",
+        responsibilities: [
+          "Phase 1 原生快速解析 -> Phase 2 消除 Markdown 围栏与尾随逗号 (Trailing Commas) -> Phase 3 单引号转双引号 -> Phase 4 正则键值对提取兜底。",
+          "参数别名自动归一化：小模型极易发生入参名幻觉（例如把 path 幻觉为 file_path、target_file；把 query 幻觉为 keyword）。内置映射表自动完成无缝重命名对齐。"
+        ],
+        code: `def robust_json_parse(raw: str) -> Tuple[bool, Dict[str, Any], str]:
+    # 4 级容错解析管道
+def normalize_parameters(func_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+    # 别名映射与智能对齐`,
+        langgraph: "在 LangGraph 中可作为 ToolNode 的前置验证与数据清洗钩子（Pre-execution Hook），极大提升使用非顶级闭源模型时的稳定性。"
+      },
+      "editor.py": {
+        title: "myclaude/tools/editor.py",
+        subtitle: "核心五级容错代码段精准替换引擎 (Fuzzy Edit Engine)",
+        pattern: "Multi-level Fallback Pattern (多级回退匹配模式)",
+        responsibilities: [
+          "解决大模型改代码最致命的痛点：全量重写极易漏掉代码逻辑且浪费 Token，而精准替换又因缩进、空行导致频繁匹配失败。",
+          "Level 1 严格精确匹配 -> Level 2 跨平台换行符自动归一(CRLF vs LF) -> Level 3 行尾空白符与空行容错 -> Level 4 缩进偏差自动重对齐 (Indentation Shift) -> Level 5 difflib 模糊相似度匹配 (>= 88%)。",
+          "Level 6 终极智能诊断：若完全不匹配，定位出相似度超过 50% 的真实代码段及行号，生成引导建议抛给模型重新尝试。"
+        ],
+        code: `def apply_fuzzy_replace(content: str, old_str: str, new_str: str) -> Tuple[bool, str, str]:
+    # 5 级回退容错匹配算法
+    # 精确匹配 -> 换行符归一 -> 行尾空白容错 -> 缩进对齐 -> difflib 模糊匹配(>=88%)`,
+        langgraph: "编写代码类 Agent 的核心生产级工具资产，可直接原封不动封装为 LangGraph 的 ToolNode 工具。"
+      },
+      "bash.py": {
+        title: "myclaude/tools/bash.py",
+        subtitle: "跨平台终端命令执行与实时流式捕获",
+        pattern: "Process Isolation & Stream Monitor (进程隔离与流式监控)",
+        responsibilities: [
+          "跨平台适配：Windows 下使用 PowerShell，Unix 下使用 bash。",
+          "安全扫描：拦截 rm -rf /、format、del /f c: 等高危指令。",
+          "流式捕获与实时日志：执行期间逐行推送到全局 SharedState 黑板；支持外部随时发信号强制 terminate 进程（防死锁卡死）；超大输出智能首尾截断防爆上下文。"
+        ],
+        code: `def run_command(command: str) -> str:
+    # 管道化执行，支持 sidecar 动态中断指令检测与超长输出首尾智能截断`,
+        langgraph: "在 LangGraph 中执行长命令时，配合 interrupt 或异步任务运行，执行输出写入 GraphState 的日志字段。"
+      },
+      "file_ops.py": {
+        title: "myclaude/tools/file_ops.py",
+        subtitle: "带防护切片读取与快照追踪的基础文件操作",
+        pattern: "Safe Resource Accessor",
+        responsibilities: [
+          "read_file：必须支持 start_line 与 end_line 切片行号查看，严禁盲目读取几万行的超大文件造成 Token 爆炸。",
+          "write_file：写入前自动调用 snapshot_manager 抓取历史备份，并自动创建缺失的父级目录。",
+          "list_dir：格式化展示目录树与文件列表，智能按文件夹优先排序并限制首批展示量。"
+        ],
+        code: `@registry.register(name="read_file")
+def read_file(path: str, start_line: int = 1, end_line: int = 200) -> str: ...
+@registry.register(name="write_file")
+def write_file(path: str, content: str) -> str: ...`,
+        langgraph: "标准的 LangChain @tool 工具定义，直接接入 ToolNode。"
+      },
+      "search.py": {
+        title: "myclaude/tools/search.py",
+        subtitle: "小型跨文件符号检索 (code_search) 与文件定位 (find_files)",
+        pattern: "High-Performance Content Indexing (类 ripgrep 实现)",
+        responsibilities: [
+          "code_search：在工作区快速检索关键字或正则表达式，自动过滤 .git、node_modules、venv 等上百种无关目录及所有二进制文件，返回文件名、匹配行号与上下文代码片段。",
+          "find_files：按通配符模式（如 *test*.py、*.json）极速检索文件名，帮助 Agent 在陌生代码仓库中秒级定位目标路径。"
+        ],
+        code: `@registry.register(name="code_search")
+def code_search(query: str, path: str = ".", file_pattern: str = None) -> str: ...`,
+        langgraph: "Agent 感知工作区环境必不可少的探索型（Exploration）工具。"
+      },
+      "mcp_ops.py": {
+        title: "myclaude/tools/mcp_ops.py",
+        subtitle: "自进化工具集与运行时动态挂载",
+        pattern: "Self-Evolution & Dynamic Code Generation (动态代码自进化)",
+        responsibilities: [
+          "add_mcp_server：Agent 运行时直接接入已有的外部 MCP 服务（如 npx 启动的浏览器自动化工具），持久化至 mcp.json 并立刻在当前会话激活新工具。",
+          "create_python_mcp_server：Agent 发现自己缺少某种能力时（如特殊数学运算、系统监控、数据库连接），能够自主编写 FastMCP Python 代码创建并热加载，瞬间完成能力自进化！"
+        ],
+        code: `@registry.register(name="create_python_mcp_server")
+def create_python_mcp_server(name: str, python_code: str) -> str: ...`,
+        langgraph: "体现了高级 Agent 的动态扩展能力；在 LangGraph 中可映射为动态向 ToolNode 添加新 Tool 的机制。"
+      },
+      "skill_ops.py": {
+        title: "myclaude/tools/skill_ops.py",
+        subtitle: "按需专业技能激活工具",
+        pattern: "On-demand Knowledge Loader",
+        responsibilities: [
+          "提供 activate_skill(skill_name) 工具。当任务涉及领域专业规范时，Agent 自主调用此工具将该技能的完整详细操作说明及配套自动化脚本路径加载到当前工作记忆中。"
+        ],
+        code: `@registry.register(name="activate_skill")
+def activate_skill(skill_name: str) -> str: ...`,
+        langgraph: "在 LangGraph 中对应于向 MessagesState 动态灌入特定知识上下文的工具或动作。"
+      },
+      "registry.py": {
+        title: "myclaude/tools/registry.py",
+        subtitle: "工具注册中心与 Schema 自动反射生成器",
+        pattern: "Registry Pattern (注册表模式) + Deterministic Schema Ordering",
+        responsibilities: [
+          "使用 @registry.register 装饰器，通过 Python inspect 模块自动提取函数的入参类型标注和 docstring，生成合法的 OpenAI Function Call JSON Schema。",
+          "确定性排序机制：get_schemas() 严格按函数名做字典序排列，确保每次发给模型的 JSON 前缀绝对恒定，最大化命中 LLM 厂商的 KV Cache 缓存！"
+        ],
+        code: `class ToolRegistry:
+    def register(self, name: str = "", description: str = ""): ...
+    def get_schemas(self) -> List[Dict[str, Any]]:
+        return sorted(self._schemas, key=lambda s: s["function"]["name"])`,
+        langgraph: "LangGraph 中使用 ToolNode(tools)，底层也是类似的注册与调度机制。"
+      },
+      "mcp_manager.py": {
+        title: "myclaude/mcp/manager.py",
+        subtitle: "工业级 MCP 协议客户端管理器",
+        pattern: "Async Worker Thread + AsyncExitStack 资源生命周期管理",
+        responsibilities: [
+          "在后台独立线程中维持一个专有的 asyncio 事件循环 (AsyncWorker)，消除主线程 CLI 与异步 MCP 通信之间的阻塞与事件循环冲突。",
+          "自动读取 mcp.json，基于 stdio 管道拉起各子进程服务，通过 AsyncExitStack 严谨管理连接会话，并将各服务导出的工具统一格式化后挂载至主工具注册表。"
+        ],
+        code: `class MCPManager:
+    def __init__(self, registry: Optional[ToolRegistry] = None): ...
+    async def _connect_server(self, name: str, command: str, args: List[str]): ...`,
+        langgraph: "LangGraph 官方也支持将 MCP Client 转换为 LangChain Tools，直接挂载进 ToolNode。"
+      },
+      "permissions.py": {
+        title: "myclaude/security/permissions.py",
+        subtitle: "权限守卫与高危拦截引擎",
+        pattern: "Guard Pattern (守卫模式) + Strategy Pattern",
+        responsibilities: [
+          "定义三档运行策略：NORMAL（默认安全模式，拦截 rm/del 等高危指令与未授权写操作）、STRICT（严格模式，拦截一切改动）、YOLO（极速放行模式，全自动静默执行）。",
+          "支持运行时通过 /yolo 指令或弹窗 [a] 随时在各模式间自由热切换。"
+        ],
+        code: `class PermissionManager:
+    def should_ask(self, tool_name: str, args: dict) -> Tuple[bool, str]: ...`,
+        langgraph: "对应 LangGraph 的 Human-in-the-Loop 设计，配合 interrupt() 实现图暂停等待审批。"
+      },
+      "agent.py": {
+        title: "myclaude/agent.py",
+        subtitle: "ReAct 推理大脑与主循环驱动中枢",
+        pattern: "ReAct Loop (Reasoning + Acting) + Orchestrator Pattern",
+        responsibilities: [
+          "完整的单轮执行闭环 (step)：注入用户目标 -> 检查侧边伴生窗口下发的干预指令 -> 上下文自平衡检测 -> 呼叫模型 -> 提取工具调用 -> 鲁棒解析 -> 权限校验 -> 执行工具 -> 提交影子快照 -> 结果追加 -> 继续思考直至无工具调用。",
+          "统筹调度 snapshot_mgr（原子撤回）、context_mgr（微摘要压缩）、skill_mgr（技能扫描）与 permission_mgr（权限把控）。"
+        ],
+        code: `class Agent:
+    def step(self, user_input: str):
+        while step_count < self.config.max_steps:
+            # 1. 伴生栏动态指令接入
+            # 2. 上下文瘦身
+            # 3. 呼叫大模型
+            # 4. 执行工具与原子快照
+            # 5. 若无工具调用则终止`,
+        langgraph: "这正是 LangGraph StateGraph 所解决的核心痛点！通过将该 while 循环转化为状态图，使各步骤解耦为清晰的 Node 与 Edge。"
+      },
+      "cli.py": {
+        title: "myclaude/cli.py",
+        subtitle: "终端人机交互主入口与斜杠命令系统",
+        pattern: "REPL (Read-Eval-Print Loop) + Command Dispatcher",
+        responsibilities: [
+          "使用 prompt_toolkit 提供带行编辑、光标移动、历史记录持久化（上下键）的高品质终端输入体验。",
+          "斜杠命令路由系统：支持 /undo（原子撤回）、/init（自动扫描初始化规范）、/skills 与 /skill（技能查看与激活）、/yolo（模式切换）、/compact（手动触发压缩）、/mcp（查看插件状态）等。"
+        ],
+        code: `def main():
+    # 初始化交互式引导配置
+    # 挂载 MCP 插件与启动 IPC 服务
+    # 循环读取输入并分发命令或驱动 Agent`,
+        langgraph: "作为整个智能体的前端驱动宿主（Host Application）。"
+      },
+      "sidecar.py": {
+        title: "sidecar.py",
+        subtitle: "双轨伴生协同终端 (Sidecar Companion)",
+        pattern: "Sidecar Pattern (边车/伴生模式) + Out-of-Band Control",
+        responsibilities: [
+          "双轨并行设计：在主终端旁侧打开第二个终端运行，通过读取 .myclaude_port 与主进程建立 HTTP 通信。",
+          "实时解说主 Agent 的当前思考状态、执行耗时、工具参数及最新 50 行日志；支持独立向另一个大模型询问主 Agent 的进度与卡点。",
+          "带外控制能力：无需中断主终端，随时下发 /steer 指令纠正 Agent 思考策略，或下发 /interrupt 强制中止卡死的外部命令。"
+        ],
+        code: `# 伴生独立终端进程
+def fetch_status(port: int): ...
+def send_steer(port: int, message: str): ...
+def send_interrupt(port: int): ...`,
+        langgraph: "相当于 LangGraph Studio 或外部监控面板，利用 LangGraph Server 提供的异步 API 对同一个 thread_id 进行实时状态监视与指令注入。"
+      },
+      "skill_md.py": {
+        title: "skills/git-workflow/SKILL.md",
+        subtitle: "领域专业技能包范例",
+        pattern: "Declarative Knowledge Artifact (声明式知识工件)",
+        responsibilities: [
+          "包含标准 YAML Frontmatter（定义触发词 git, commit, push, branch 等）。",
+          "声明 Git 提交前必须执行 git status / git diff 检查及单元测试的硬性准则，约束 Conventional Commits 格式，并在配套 scripts/ 下提供辅助探测脚本。"
+        ],
+        code: `---
+name: git-workflow
+description: 规范化 Git 分支管理与 Conventional Commits 提交格式
+triggers: ["git", "commit", "push", "branch", "pr"]
+---
+### Git 专业工作流与规范指南...`,
+        langgraph: "在 LangGraph 中可作为特定领域 Subgraph 的 Prompt 或知识库节点。"
+      }
+    };
+
+    function showFileDetail(key) {
+      document.querySelectorAll('.tree-file').forEach(el => el.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+
+      const data = filesDetail[key];
+      if (!data) return;
+
+      const panel = document.getElementById('fileDetailPanel');
+      panel.innerHTML = `
+        <div class="detail-header">
+          <h3>${data.title}</h3>
+          <p style="font-size: 0.95rem; color: #9ca3af; margin-top: 4px;">${data.subtitle}</p>
+          <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <span class="badge badge-cyan">设计模式: ${data.pattern}</span>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h4>📌 核心业务职责与设计痛点</h4>
+          <ul>
+            ${data.responsibilities.map(r => `<li>${r}</li>`).join('')}
+          </ul>
+        </div>
+
+        <div class="detail-section">
+          <h4>💻 核心结构与骨架代码</h4>
+          <pre class="code-box"><code>${data.code}</code></pre>
+        </div>
+
+        <div class="detail-section">
+          <h4>🔄 迁移到 LangGraph 的对应解法</h4>
+          <div style="background: rgba(139, 92, 246, 0.1); border-left: 3px solid var(--accent-purple); padding: 12px 16px; border-radius: 6px; font-size: 0.9rem; color: #e9d5ff;">
+            ${data.langgraph}
+          </div>
+        </div>
+      `;
+    }
+
+    function filterFileTree() {
+      const q = document.getElementById('treeSearchInput').value.toLowerCase();
+      document.querySelectorAll('.tree-file').forEach(el => {
+        const text = el.innerText.toLowerCase();
+        el.style.display = text.includes(q) ? 'flex' : 'none';
+      });
+    }
+
+    // 默认展示 state.py
+    showFileDetail('state.py');
+
+    // ==========================================
+    // 4. LangGraph 对照数据
+    // ==========================================
+    const compareData = [
+      {
+        title: "1. 状态定义与黑板管理 (State Management)",
+        nativeTitle: "MyClaude 原生实现 (SharedState + messages)",
+        nativeCode: `# myclaude/core/state.py
+class SharedState:
+    def __init__(self):
+        self.status = "IDLE"
+        self.goal = ""
+        self.step = 0
+        self.active_tool = None
+        self.recent_logs = deque(maxlen=200)
+        self.steering_queue = []
+
+# myclaude/agent.py
+self.messages: List[Dict[str, Any]] = [
+    {"role": "system", "content": ...}
+]`,
+        langgraphTitle: "LangGraph 对应实现 (TypedDict + Reducers)",
+        langgraphCode: `from typing import Annotated, Sequence, TypedDict
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
+
+# 显式定义状态模式 (Schema) 与追加更新策略 (Reducer)
+class AgentState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], add_messages]
+    step_count: int
+    goal: str
+    active_tool: str | None
+    logs: list[str]`,
+        summary: "原生方式通过维护 List[dict] 并借助一个多线程锁保护的 SharedState 单例来追踪状态；而 LangGraph 采用函数响应式思维，通过 AgentState(TypedDict) 和 Reducer (如 add_messages) 声明状态的合并逻辑，保证了状态转移的纯粹性与可重放性。"
+      },
+      {
+        title: "2. 循环编排与条件分支 (Control Flow & Edges)",
+        nativeTitle: "MyClaude 原生实现 (while 循环驱动)",
+        nativeCode: `# myclaude/agent.py
+step_count = 0
+while step_count < self.config.max_steps:
+    step_count += 1
+    # 呼叫模型
+    response = self.client.chat.completions.create(...)
+    message = response.choices[0].message
+    self.messages.append(message)
+    
+    # 终止条件判断
+    if not message.tool_calls:
+        break
+        
+    # 执行工具
+    for tool_call in message.tool_calls:
+        ...`,
+        langgraphTitle: "LangGraph 对应实现 (StateGraph + Conditional Edges)",
+        langgraphCode: `from langgraph.graph import StateGraph, END
+from langgraph.prebuilt import tools_condition
+
+workflow = StateGraph(AgentState)
+
+# 1. 注册节点
+workflow.add_node("agent", call_model_node)
+workflow.add_node("tools", tool_execution_node)
+
+# 2. 编排边与条件分支
+workflow.set_entry_point("agent")
+workflow.add_conditional_edges(
+    "agent",
+    tools_condition,  # 内部判断是否有 tool_calls
+    {"tools": "tools", END: END}
+)
+workflow.add_edge("tools", "agent")  # 环形循环回模型
+app = workflow.compile()`,
+        summary: "手写 while 循环虽然简单直观，但当需要引入子图、分支路由、异常重试时代码会迅速臃肿。LangGraph 将执行流抽象为有向状态图，通过条件边（Conditional Edge）优雅解耦了决策节点与工具执行节点。"
+      },
+      {
+        title: "3. 工具分发与调度 (Tool Execution)",
+        nativeTitle: "MyClaude 原生实现 (ToolRegistry 反射中心)",
+        nativeCode: `# myclaude/tools/registry.py
+class ToolRegistry:
+    def execute(self, name: str, kwargs: dict) -> str:
+        return self._tools[name](**kwargs)
+
+# myclaude/agent.py 逐个分发执行
+for tool_call in message.tool_calls:
+    name = tool_call.function.name
+    args = normalize_parameters(name, robust_json_parse(tool_call.function.arguments))
+    output = registry.execute(name, args)`,
+        langgraphTitle: "LangGraph 对应实现 (预置 ToolNode)",
+        langgraphCode: `from langgraph.prebuilt import ToolNode
+from langchain_core.tools import tool
+
+@tool
+def edit_file(path: str, old_str: str, new_str: str) -> str:
+    """高容错替换代码"""
+    return apply_fuzzy_replace(...)
+
+tools = [edit_file, run_command, read_file]
+# ToolNode 内部已内置多工具并行执行、参数校验与 ToolMessage 状态追加
+tool_node = ToolNode(tools)`,
+        summary: "MyClaude 手写了 ToolRegistry，利用 Python inspect 提取 Schema 并实现统一执行分发；LangGraph 提供了开箱即用的 ToolNode，天然支持多工具并行并发调用，并自动把结果封包为合法的 ToolMessage 追加到 State。"
+      },
+      {
+        title: "4. 人机协同与权限拦截 (Human-in-the-Loop)",
+        nativeTitle: "MyClaude 原生实现 (PermissionManager 交互确认)",
+        nativeCode: `# myclaude/agent.py
+should_ask, desc = self.permission_mgr.should_ask(func_name, args)
+if should_ask:
+    choice = ask_permission_choice(desc)
+    if choice == "a":
+        self.permission_mgr.mode = PermissionMode.YOLO
+    elif choice == "n":
+        tool_output = "用户拒绝了执行此操作的权限。"`,
+        langgraphTitle: "LangGraph 对应实现 (interrupt 机制)",
+        langgraphCode: `from langgraph.types import interrupt
+
+def tool_execution_node(state: AgentState):
+    tool_call = state["messages"][-1].tool_calls[0]
+    if is_potentially_dangerous(tool_call):
+        # 挂起图执行，向外界抛出审核请求
+        decision = interrupt({"action": "approve_tool", "call": tool_call})
+        if decision != "approve":
+            return {"messages": [ToolMessage("用户拒绝执行", ...)]}
+            
+    # 继续执行...
+# 外部恢复：app.invoke(Command(resume="approve"), config=thread_cfg)`,
+        langgraphTitle: "LangGraph 对应实现 (interrupt 机制)",
+        summary: "原生代码是在主线程中弹出阻塞式 input() 提示。而 LangGraph 支持真正的分布式 Human-in-the-Loop：通过 interrupt() 挂起状态图，图的状态被保存到数据库，用户可以在 Web 端、移动端或外部 API 进行审核确认后再随时唤醒恢复！"
+      },
+      {
+        title: "5. 快照回滚与时间旅行 (Snapshot vs Time Travel)",
+        nativeTitle: "MyClaude 原生实现 (SnapshotManager 影子快照)",
+        nativeCode: `# myclaude/core/snapshot.py
+def rollback_latest(self) -> Tuple[bool, str, List[Path]]:
+    checkpoint = self._undo_stack.pop()
+    for path, snap in checkpoint.files.items():
+        if snap.existed:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(snap.content)
+        else:
+            path.unlink() # 物理删除新产生的文件`,
+        langgraphTitle: "LangGraph 对应实现 (Checkpointer + Time Travel)",
+        langgraphCode: `from langgraph.checkpoint.sqlite import SqliteSaver
+
+# 为状态图装配持久化快照器
+with SqliteSaver.from_conn_string("checkpoints.db") as checkpointer:
+    app = workflow.compile(checkpointer=checkpointer)
+    
+# 时间旅行 (Time Travel)：查看历史快照并任意回退
+state_history = list(app.get_state_history(thread_config))
+# 还原到指定的历史步骤重新分叉运行
+app.update_state(thread_config, values=previous_state)`,
+        summary: "MyClaude 侧重于针对物理文件系统构建 Undo 栈；而 LangGraph 的 Checkpointer 则是全状态（包括消息、变量、上下文）的时间旅行。在高级 Agent 架构中，两者结合是最佳范式：用 LangGraph 回溯对话记忆，用 SnapshotManager 恢复磁盘文件！"
+      }
+    ];
+
+    function switchCompare(idx) {
+      document.querySelectorAll('.compare-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === idx);
+      });
+      const data = compareData[idx];
+      const container = document.getElementById('compareContent');
+      container.innerHTML = `
+        <div class="split-col">
+          <div class="split-header">
+            <h4>${data.nativeTitle}</h4>
+            <span class="badge badge-cyan">MyClaude 原生源码</span>
+          </div>
+          <pre class="code-box" style="flex:1;"><code>${data.nativeCode}</code></pre>
+        </div>
+        <div class="split-col">
+          <div class="split-header">
+            <h4>${data.langgraphTitle}</h4>
+            <span class="badge badge-purple">LangGraph 标准架构</span>
+          </div>
+          <pre class="code-box" style="flex:1;"><code>${data.langgraphCode}</code></pre>
+        </div>
+      `;
+      document.getElementById('compareSummary').innerText = data.summary;
+    }
+
+    switchCompare(0);
+
+    // ==========================================
+    // 5. 学习路线与进度打卡逻辑
+    // ==========================================
+    const roadmapStages = [
+      {
+        stage: "阶段一: 吃透原生 ReAct 循环与工具调用本质",
+        time: "预计耗时: 1~2 天",
+        goal: "脱离框架概念包袱，看透大模型、函数调用 (Function Call) 与终端环境之间的数据流动本质。",
+        tasks: [
+          { id: "s1_t1", title: "精读 main.py 与 cli.py，理清终端会话循环与 REPL 的交互流程", files: "main.py, myclaude/cli.py" },
+          { id: "s1_t2", title: "精读 agent.py 中的 _build_system_prompt() 与 step()，追踪 messages 的结构变化", files: "myclaude/agent.py" },
+          { id: "s1_t3", title: "研读 registry.py，搞懂 Python inspect 反射如何自动生成 Function Call Schema 并字典序排重", files: "myclaude/tools/registry.py" },
+          { id: "s1_t4", title: "实战练习：在 tools/ 下手写一个 @registry.register 工具并运行 main.py 让 Agent 成功自主调用", files: "myclaude/tools/my_test_tool.py" }
+        ]
+      },
+      {
+        stage: "阶段二: 掌握工业级 Agent 护城河工程底座",
+        time: "预计耗时: 2~3 天",
+        goal: "理解 Demo 与工业级生产 Agent 之间的差异，掌握长任务压缩、容错编辑与协议扩展。",
+        tasks: [
+          { id: "s2_t1", title: "精读 editor.py，深入理解五级容错代码替换算法（CRLF、空白符、缩进自适应、difflib 模糊匹配）", files: "myclaude/tools/editor.py" },
+          { id: "s2_t2", title: "精读 context.py，掌握 Tier 1 软折叠与 Tier 2 硬摘要的区别，体会 KV Cache 缓存保护设计", files: "myclaude/core/context.py" },
+          { id: "s2_t3", title: "精读 snapshot.py，搞懂 Checkpoint 如何在物理文件覆写前自动暂存，并实现 /undo 原子回滚", files: "myclaude/core/snapshot.py" },
+          { id: "s2_t4", title: "运行现有全套自动化测试 (python -m unittest discover -s tests)，分析 31 个单测的断言策略", files: "tests/test_*.py" }
+        ]
+      },
+      {
+        stage: "阶段三: 将 MyClaude 迁移重构为 LangGraph 状态图",
+        time: "预计耗时: 3~4 天",
+        goal: "使用 LangGraph 状态图模型完整重写 Agent 主控制流，体会图编排对复杂循环的解耦力量。",
+        tasks: [
+          { id: "s3_t1", title: "定义 AgentState(TypedDict)，使用 add_messages Reducer 管理对话与状态变量", files: "langgraph_agent/state.py" },
+          { id: "s3_t2", title: "将 tools/ 下的原生工具转换为 @tool 格式，并挂载到 LangGraph 预置 ToolNode", files: "langgraph_agent/tools.py" },
+          { id: "s3_t3", title: "编排 StateGraph：建立 agent 节点、tools 节点，并用 tools_condition 连接条件分支边", files: "langgraph_agent/graph.py" },
+          { id: "s3_t4", title: "编译并使用 app.invoke() 运行测试，验证新图驱动智能体能够自主写代码并修复 Bug", files: "langgraph_agent/main.py" }
+        ]
+      },
+      {
+        stage: "阶段四: 进阶 LangGraph 高级工业特性与协同",
+        time: "预计耗时: 3~5 天",
+        goal: "掌握持久化时间旅行、分布式人机协同 (HITL) 与多智能体子图 (Multi-Agent Subgraphs)。",
+        tasks: [
+          { id: "s4_t1", title: "集成 SqliteSaver / MemorySaver，利用 thread_id 实现真正的对话持久化与时间旅行回溯", files: "checkpointer 实践" },
+          { id: "s4_t2", title: "在工具节点中使用 interrupt() 替代原生权限确认弹窗，实现真正的异步人机审核协同", files: "interrupt 实践" },
+          { id: "s4_t3", title: "改造 sidecar.py：通过 LangGraph astream() 异步监听图状态跃迁，实现流式副驾驶监控", files: "sidecar_langgraph.py" },
+          { id: "s4_t4", title: "架构升级：拆分为【规划 Agent】+【编程 Agent】+【测试 Agent】三节点协同子图", files: "multi_agent_subgraphs" }
+        ]
+      }
+    ];
+
+    function renderRoadmap() {
+      const container = document.getElementById('roadmapList');
+      const savedTasks = JSON.parse(localStorage.getItem('myclaude_learning_progress') || '{}');
+
+      let html = '';
+      roadmapStages.forEach((stage, sIdx) => {
+        html += `
+          <div class="stage-card">
+            <div class="stage-header">
+              <div>
+                <div class="stage-title">
+                  <span class="badge badge-purple">STAGE 0${sIdx + 1}</span>
+                  <span>${stage.stage}</span>
+                </div>
+                <div class="stage-meta" style="margin-top: 6px;">💡 目标: ${stage.goal}</div>
+              </div>
+              <span class="badge badge-amber">${stage.time}</span>
+            </div>
+
+            <ul class="task-checklist">
+              ${stage.tasks.map(t => {
+                const isChecked = savedTasks[t.id] ? 'checked' : '';
+                const isDoneClass = savedTasks[t.id] ? 'completed' : '';
+                return `
+                  <li class="task-item ${isDoneClass}" onclick="toggleTask('${t.id}')">
+                    <input type="checkbox" class="task-checkbox" id="${t.id}" ${isChecked} onclick="event.stopPropagation(); toggleTask('${t.id}')" />
+                    <div class="task-text">
+                      <div>${t.title}</div>
+                      <div class="task-files">📂 关键文件: ${t.files}</div>
+                    </div>
+                  </li>
+                `;
+              }).join('')}
+            </ul>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+      updateProgress();
+    }
+
+    function toggleTask(taskId) {
+      const saved = JSON.parse(localStorage.getItem('myclaude_learning_progress') || '{}');
+      saved[taskId] = !saved[taskId];
+      localStorage.setItem('myclaude_learning_progress', JSON.stringify(saved));
+      renderRoadmap();
+    }
+
+    function updateProgress() {
+      const saved = JSON.parse(localStorage.getItem('myclaude_learning_progress') || '{}');
+      const allTaskIds = roadmapStages.flatMap(s => s.tasks.map(t => t.id));
+      const total = allTaskIds.length;
+      const completed = allTaskIds.filter(id => saved[id]).length;
+      const pct = Math.round((completed / total) * 100);
+
+      document.getElementById('totalTasksCount').innerText = total;
+      document.getElementById('completedCount').innerText = completed;
+      document.getElementById('progressPercent').innerText = pct + '%';
+      document.getElementById('progressBar').style.width = pct + '%';
+    }
+
+    renderRoadmap();
+  </script>
+</body>
+</html>

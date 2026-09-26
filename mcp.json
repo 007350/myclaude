@@ -7,7 +7,7 @@
       ]
     },
     "system_tool": {
-      "command": "D:\\Dev\\python.exe",
+      "command": "python",
       "args": [
         "custom_mcp_servers/system_tool_server.py"
       ]
