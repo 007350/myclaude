@@ -14,6 +14,8 @@ from .console import (
     print_compaction_card,
     print_skills_table,
     print_skill_activation,
+    print_undo_card,
+    print_undo_stack,
 )
 
 __all__ = [
@@ -32,4 +34,6 @@ __all__ = [
     "print_compaction_card",
     "print_skills_table",
     "print_skill_activation",
+    "print_undo_card",
+    "print_undo_stack",
 ]

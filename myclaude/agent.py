@@ -2,7 +2,7 @@ import os
 import json
 import platform
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from openai import OpenAI
 
 from .config import Config
@@ -14,6 +14,7 @@ from .core import (
     ContextManager,
     load_claude_md,
     default_skill_manager,
+    default_snapshot_manager,
 )
 from .ui import (
     console,
@@ -43,9 +44,21 @@ class Agent:
         )
         self.context_mgr = ContextManager()
         self.skill_mgr = default_skill_manager
+        self.snapshot_mgr = default_snapshot_manager
         self.claude_md_paths: List[Path] = []
         self.messages: List[Dict[str, Any]] = []
         self.reset()
+
+    def undo(self) -> Tuple[bool, str, List[Path]]:
+        """执行秒级原子回退，并在上下文工作记忆中同步撤销通知"""
+        ok, msg, reverted = self.snapshot_mgr.rollback_latest()
+        if ok and reverted:
+            reverted_names = ", ".join([p.name for p in reverted])
+            self.messages.append({
+                "role": "user",
+                "content": f"[系统指令: 用户刚刚执行了 /undo 撤回了最近的文件修改，以下文件已原子还原至修改前状态: {reverted_names}。请分析为何之前的修改未达预期，并换一种新的实现策略。]"
+            })
+        return ok, msg, reverted
 
     def manual_compact(self) -> Dict[str, Any]:
         """手动触发深度上下文微摘要压缩"""
@@ -245,6 +258,10 @@ class Agent:
                         "tool_call_id": call_id,
                         "content": tool_output,
                     })
+
+                # 检查本轮工具执行是否产生了文件写入/修改，若有则打包提交为一个原子 Checkpoint
+                if self.snapshot_mgr.has_pending():
+                    self.snapshot_mgr.commit_checkpoint(f"第 {step_count} 轮文件修改")
 
             if step_count >= self.config.max_steps:
                 print_info(f"已达到单次任务最大步数限制 ({self.config.max_steps} 步)。")

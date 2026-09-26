@@ -215,3 +215,39 @@ def print_skills_table(skills: List[Any]):
 def print_skill_activation(skill_name: str, detail: str):
     """展示技能激活详情面板"""
     console.print(Panel(Markdown(detail), title=f"[bold magenta]⚡ 技能已激活: {skill_name}[/bold magenta]", border_style="magenta"))
+
+
+def print_undo_card(message: str, reverted_files: List[Any]):
+    """展示原子回滚成功卡片"""
+    from pathlib import Path
+    lines = [f"[bold green]{message}[/bold green]"]
+    if reverted_files:
+        lines.append("\n[bold cyan]已精准恢复的文件清单:[/bold cyan]")
+        for f in reverted_files:
+            lines.append(f"  • [yellow]{Path(f).name}[/yellow] ([dim]{f}[/dim])")
+    lines.append("\n[dim]💡 提示: Agent 认知记忆已同步注入该回滚事件，防止在错误路线上反复死磕。[/dim]")
+    console.print(Panel("\n".join(lines), title="[bold green]⏪ 原子版本回滚成功 (Atomic Undo)[/bold green]", border_style="green"))
+
+
+def print_undo_stack(stack: List[Dict[str, Any]]):
+    """展示当前可回滚的历史检查点栈"""
+    if not stack:
+        console.print("[dim]当前 Undo 栈为空，没有任何可回滚的文件修改记录。[/dim]")
+        return
+
+    from rich.table import Table
+    table = Table(title="📜 可回退的历史检查点 (Undo History)", border_style="yellow")
+    table.add_column("步骤", style="bold cyan", justify="center")
+    table.add_column("发生时间", style="dim", justify="center")
+    table.add_column("操作描述", style="white", justify="left")
+    table.add_column("影响文件", style="yellow", justify="left")
+
+    for item in stack:
+        table.add_row(
+            f"#{item['step']}",
+            item["time"],
+            item["description"],
+            ", ".join(item["files"]) or "-"
+        )
+    console.print(table)
+    console.print("[dim]输入 /undo 可直接撤销最近一步修改。[/dim]")

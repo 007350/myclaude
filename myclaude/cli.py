@@ -16,6 +16,8 @@ from .ui import (
     print_mcp_servers,
     print_yolo_status,
     print_skills_table,
+    print_undo_card,
+    print_undo_stack,
 )
 
 
@@ -152,12 +154,24 @@ def main():
                 elif cmd_lower in ("/compact", "/compress"):
                     agent.manual_compact()
                     continue
+                elif cmd_lower.startswith("/undo"):
+                    parts = user_input.split()
+                    if len(parts) > 1 and parts[1].lower() in ("list", "history", "log"):
+                        print_undo_stack(agent.snapshot_mgr.get_stack_summary())
+                    else:
+                        ok, msg, reverted = agent.undo()
+                        if ok:
+                            print_undo_card(msg, reverted)
+                        else:
+                            print_info(msg)
+                    continue
                 elif cmd_lower in ("/mcp", "/plugins"):
                     print_mcp_servers(mcp_manager.get_server_stats())
                     continue
                 elif cmd_lower in ("/help", "help"):
                     console.print(
                         "[bold cyan]可用命令:[/bold cyan]\n"
+                        "  /undo   : 秒级原子回滚最近一次文件修改 (输入 /undo list 查看历史检查点)\n"
                         "  /init   : 自动扫描代码库并交互式生成/微调项目 CLAUDE.md 规范\n"
                         "  /skills : 查看所有已发现的全局与项目专业技能 (Skills)\n"
                         "  /skill  : 显式激活某项技能（例如 /skill git-workflow）\n"

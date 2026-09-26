@@ -37,6 +37,9 @@ def read_file(path: str, start_line: int = 1, end_line: int = 200) -> str:
         return f"读取文件失败: {str(e)}"
 
 
+from ..core import default_snapshot_manager
+
+
 @registry.register(
     name="write_file",
     description="创建或全量覆盖写入一个文件。若父级文件夹不存在将自动创建。"
@@ -46,6 +49,7 @@ def write_file(path: str, content: str) -> str:
     try:
         p = Path(path).resolve()
         p.parent.mkdir(parents=True, exist_ok=True)
+        default_snapshot_manager.record_before_change(p, f"创建/全量覆盖 {p.name}")
         with open(p, "w", encoding="utf-8") as f:
             f.write(content)
         return f"成功写入文件: {path} (共 {len(content)} 字符)"
@@ -76,6 +80,7 @@ def edit_file(path: str, old_str: str, new_str: str) -> str:
         if not ok:
             return result  # 返回智能诊断信息与最相似的代码片段
 
+        default_snapshot_manager.record_before_change(p, f"容错编辑 {p.name}")
         with open(p, "w", encoding="utf-8") as f:
             f.write(result)
 
